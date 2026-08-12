@@ -23,25 +23,25 @@ This architecture is built on the 5 pillars of persistent, autonomous AI:
 
 ## 🚀 Infrastructure Architecture
 
-Our setup offloads heavy LLM computing to the cloud while keeping orchestration and database systems private:
+Our setup offloads heavy LLM computing to the cloud while keeping orchestration, security, and database systems private:
 
 ```mermaid
 graph TD
-    User([Customer on WhatsApp]) -->|Webhook| Responder[1. Lead Responder Agent]
-    Cron[Weekly Timer] -->|Trigger| Marketing[2. Marketing Agent]
+    User([User on Telegram/WhatsApp]) -->|API / Webhook| TelegramGW[Telegram Gateway Node]
     
-    subgraph n8n [n8n on OCI Server]
-        Responder
-        Marketing
+    subgraph OCI [OCI Ubuntu Server]
+        subgraph Docker [Docker Containers]
+            Hermes[Hermes Agent Container] -->|Tirith Daemon Engine| LocalData[(Mounted Data: .env, SOUL.md, config.yaml)]
+            n8n[n8n Automation] -->|Orchestrates workflows| Odoo[(Odoo CRM)]
+            Ollama[Ollama Container]
+            Nginx[Nginx Proxy Manager]
+        end
     end
     
-    subgraph OCI [Your OCI Server]
-        n8n -->|Save/Fetch Leads| Odoo[(Odoo CRM)]
-    end
-    
-    subgraph Cloud [Google Cloud]
-        n8n -->|API Requests| Gemini[Google Gemini Pro API]
-    end
+    TelegramGW <--> Hermes
+    Hermes <-->|API Calls| OpenRouter[OpenRouter Cloud API]
+    OpenRouter <-->|google/gemini-2.5-flash:free| Gemini[Google Gemini LLM]
+    n8n <-->|GDrive Node| GDrive[Google Drive Cloud Storage]
 ```
 
 ---
@@ -51,18 +51,24 @@ graph TD
 ```text
 agentic-ai-workspace/
 ├── README.md                 # Project dashboard and setup guide
-├── docker-compose.yml        # Setup for Odoo, Postgres, and Nginx on OCI
+├── .gitignore                # Block keys (.env, .pem), sheets, and PDFs
+├── .env.example              # Environment variables template
 │
-├── agents/                   # Agent configurations and system instructions
-│   └── hermes/
-│       ├── SOUL.md           # The agent's identity, rules, and behavior
-│       └── .env.example      # Environment variables template (API keys)
+├── agents/                   # Multi-agent configurations and system instructions
+│   ├── ceo/                  # Business Planner Agent (Hormozi style)
+│   ├── marketer/             # Social Copywriter Agent
+│   ├── responder/            # WhatsApp/Telegram Lead Qualifier (Kamil)
+│   └── farmer/               # AI Agronomist & IoT Advisor
+│
+├── docs/                     # Project Guides & Documentation
+│   └── etiqa-marketer-setup.md # Guide for n8n + GDrive integration
 │
 ├── skills/                   # Custom scripts the agent can execute
-│   ├── odoo-connector/       # Python scripts to query/insert leads into Odoo
-│   └── server-health/        # Scripts to monitor OCI docker container health
+│   ├── generate_etiqa_content.py # Etiqa marketing copy generator
+│   └── test_telegram.py      # Script to verify Telegram credentials
 │
 └── workflows/                # n8n Automation JSON blueprints
-    ├── lead-responder.json   # Real-time WhatsApp sales agent workflow
-    └── B2B-prospector.json   # Automated cold outreach workflow
+    ├── etiqa-marketer.json   # Google Drive + Gemini content pipeline
+    └── ceo-reminder.json     # Scheduled proposal reminder via Telegram
 ```
+
