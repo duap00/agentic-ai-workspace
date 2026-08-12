@@ -1,0 +1,150 @@
+{
+  "name": "Etiqa Takaful Social Marketer (Gemini + GDrive)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e674b890-1c3e-4fa2-bfb2-608000000001",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "YOUR_BRAND_VOICE_FILE_ID"
+      },
+      "id": "e674b890-1c3e-4fa2-bfb2-608000000002",
+      "name": "Read Brand Voice Guide",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [420, 200],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIALS_ID"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "YOUR_PRODUCT_PDF_FILE_ID"
+      },
+      "id": "e674b890-1c3e-4fa2-bfb2-608000000003",
+      "name": "Read Product Brochure PDF",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [420, 400],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_GOOGLE_DRIVE_CREDENTIALS_ID"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "e674b890-1c3e-4fa2-bfb2-608000000004",
+      "name": "AI Agent",
+      "type": "n8n-nodes-base.advancedAgent",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "modelName": "gemini-1.5-pro",
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "e674b890-1c3e-4fa2-bfb2-608000000005",
+      "name": "Google Gemini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [700, 520],
+      "credentials": {
+        "googleApi": {
+          "id": "YOUR_GEMINI_API_CREDENTIALS_ID"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the AI Social Media Manager for Ahmad Kamil (etiqasolution). \n\nYOUR BRAND VOICE GUIDELINES:\n{{$node[\"Read Brand Voice Guide\"].json[\"content\"]}}\n\nPRODUCT BROCHURE CONTEXT:\n(Use the attached PDF data to extract rules and pricing math)\n\nTASK:\nWrite a highly engaging social media post (in a mix of Malay and English) in the style of Alex Hormozi (punchy, numbers-focused, zero jargon) about a key benefit in the brochure. Add a call-to-action to book a review at cal.com/duap00."
+      },
+      "id": "e674b890-1c3e-4fa2-bfb2-608000000006",
+      "name": "Prompt definition",
+      "type": "@n8n/n8n-nodes-langchain.agentPrompt",
+      "typeVersion": 1,
+      "position": [850, 420]
+    }
+  ],
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Read Brand Voice Guide",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Product Brochure PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Brand Voice Guide": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Product Brochure PDF": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt definition": {
+      "ai_agent": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_agent",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
