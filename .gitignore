@@ -4,3 +4,12 @@ __pycache__/
 *.pyc
 .DS_Store
 *.log
+
+# Ignore Private Files & Folders
+private/
+**/private/
+*Proposal*
+*proposal*
+*.pem
+*.key
+*.ppk
