@@ -1,0 +1,64 @@
+{
+  "name": "CEO Agent - Zakat Proposal Telegram Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "value": 8
+            },
+            {
+              "field": "dates",
+              "value": 17
+            },
+            {
+              "field": "hours",
+              "value": 9
+            }
+          ]
+        }
+      },
+      "id": "f784c901-2d3e-4ba2-cfb2-708000000001",
+      "name": "Schedule Trigger (Next Monday, Aug 17)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "=Assalamu'alaikum Ahmad Kamil. Ini adalah peringatan rasmi daripada CEO Agent Robot People Industries.\n\nHari ini (Isnin, 17 Ogos) adalah tarikh yang dijadualkan untuk menghantar proposal pertanian pintar cili fertigasi kepada pihak Zakat MAINS.\n\nSila pastikan senarai dokumen wajib berikut telah lengkap dilampirkan:\n1. Salinan Kad Pengenalan & Kad OKU\n2. Surat Henti Kerja / Notis Pemberhentian Kerja\n3. Gambar Tapak Projek (Bengkel Seri Sembilan)\n4. Sijil SSM Syarikat (Robot People Industries)\n5. Sebutharga (Quotation) Pembekal bernilai RM6,400.00\n\nSemoga urusan anda dipermudahkan dan projek ini mendapat kelulusan pihak MAINS!",
+        "additionalFields": {}
+      },
+      "id": "f784c901-2d3e-4ba2-cfb2-708000000002",
+      "name": "Telegram Send Reminder",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [450, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_BOT_CREDENTIALS_ID"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Next Monday, Aug 17)": {
+      "main": [
+        [
+          {
+            "node": "Telegram Send Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
