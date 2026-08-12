@@ -1,9 +1,16 @@
 # Ignored files
 .env
+**/.env
 __pycache__/
 *.pyc
 .DS_Store
 *.log
+
+# Customer Leads & Excel Reports (Odoo exports)
+*.xlsx
+*.xls
+*.csv
+*.pdf
 
 # Ignore Private Files & Folders
 private/
