@@ -1,0 +1,202 @@
+{
+  "name": "KebunData Threads - Viral Auto Poster",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8,12,20 * * *"
+            }
+          ]
+        }
+      },
+      "id": "kb-post-0001",
+      "name": "Schedule Trigger (Peak Times 8am, 12pm, 8pm)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [180, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const topics = [\n  {\n    category: 'Soil Moisture & Watering',\n    focus: 'Pokok layu sebab lemas air vs kurang air - kenapa sensor kelembapan penting',\n    fact: 'Akar pokok cili perlukan oksigen dalam media. Bila kelembapan cecah 100% berterusan >6 jam, akar mula mereput (root rot) sebelum daun tunjuk tanda layu.'\n  },\n  {\n    category: 'Baja & EC Level',\n    focus: 'Membazir baja AB sebab bacaan EC lari waktu panas terik',\n    fact: 'Waktu tengah hari panas terik, transpirasi laju. Pokok perlukan air lebih banyak daripada baja pekat. Siram baja EC tinggi masa panas buat daun terbakar.'\n  },\n  {\n    category: 'Pest & Penyakit',\n    focus: 'Kutu trip dan hama merah - punca daun cili berkedut/keriting',\n    fact: 'Kutu trip serang pucuk muda sebelum nampak dengan mata kasar. Petani biasa sembur racun bila daun dah kerinting mangkuk, masa tu populasi kutu dah matang.'\n  },\n  {\n    category: 'IoT Tech ROI',\n    focus: 'Banding kos sensor IoT RM200 vs rugi satu musim tuaian RM5,000',\n    fact: 'Kerosakan pam fertigasi atau paip tersumbat yang lambat dikesan 24 jam boleh bunuh 500 polibeg cili serentak.'\n  },\n  {\n    category: 'Cocopeat vs Tanah Campuran',\n    focus: 'Bahaya guna cocopeat mentah tak rendam / basuh tannin',\n    fact: 'Cocopeat baru ada kandungan garam dan tannin tinggi. Kalau tak basuh sampai EC < 0.5, anak benih terbantut dan daun kuning dari bawah.'\n  }\n];\n\nconst selected = topics[Math.floor(Math.random() * topics.length)];\nreturn {\n  json: {\n    category: selected.category,\n    focus: selected.focus,\n    fact: selected.fact,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "kb-post-0002",
+      "name": "Select Topic & Angle",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{$env.GEMINI_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah KebunData Threads Growth Specialist. Hasilkan 1 post Threads santai yang tular dalam Bahasa Melayu santai / Manglish.\\n\\nTopik: {{$json.focus}}\\nFakta Agronomi: {{$json.fact}}\\n\\nSyarat Format:\\n1. Baris 1-2: Hook yang curi perhatian / pecah mitos.\\n2. Baris 3-5: Isi ringkas & praktikal (jangan formal macam surat).\\n3. Baris Akhir: WAJIB satu soalan terbuka yang mesra untuk ajak pembaca komen kongsi pengalaman.\\n4. Maksimum 1-2 hashtag santai (#KebunData #KebunBandar).\\n\\nOutputkan teks post SAHAJA tanpa tanda petik.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.8,\n    \"maxOutputTokens\": 500\n  }\n}"
+      },
+      "id": "kb-post-0003",
+      "name": "Generate Viral Post (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst postText = response.candidates[0].content.parts[0].text.trim();\nreturn {\n  json: {\n    postText: postText,\n    userId: $env.THREADS_USER_ID,\n    accessToken: $env.THREADS_ACCESS_TOKEN\n  }\n};"
+      },
+      "id": "kb-post-0004",
+      "name": "Extract Post Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.threads.net/v1.0/{{$json.userId}}/threads",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "media_type",
+              "value": "TEXT"
+            },
+            {
+              "name": "text",
+              "value": "={{$json.postText}}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{$json.accessToken}}"
+            }
+          ]
+        }
+      },
+      "id": "kb-post-0005",
+      "name": "Create Threads Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1060, 300]
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "seconds"
+      },
+      "id": "kb-post-0006",
+      "name": "Wait 3 Seconds",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1280, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.threads.net/v1.0/{{$node[\"Extract Post Text\"].json[\"userId\"]}}/threads_publish",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{$node[\"Create Threads Container\"].json[\"id\"]}}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{$node[\"Extract Post Text\"].json[\"accessToken\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "kb-post-0007",
+      "name": "Publish to Threads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1500, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Peak Times 8am, 12pm, 8pm)": {
+      "main": [
+        [
+          {
+            "node": "Select Topic & Angle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Topic & Angle": {
+      "main": [
+        [
+          {
+            "node": "Generate Viral Post (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Viral Post (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Extract Post Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Post Text": {
+      "main": [
+        [
+          {
+            "node": "Create Threads Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Threads Container": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 Seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3 Seconds": {
+      "main": [
+        [
+          {
+            "node": "Publish to Threads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

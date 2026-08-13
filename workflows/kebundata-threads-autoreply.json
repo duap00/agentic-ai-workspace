@@ -1,0 +1,280 @@
+{
+  "name": "KebunData Threads - Two-Tier Auto Responder",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "kb-reply-0001",
+      "name": "Poll Every 10 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [160, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.threads.net/v1.0/{{$env.THREADS_USER_ID}}/threads",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "id,text,timestamp"
+            },
+            {
+              "name": "limit",
+              "value": "5"
+            },
+            {
+              "name": "access_token",
+              "value": "={{$env.THREADS_ACCESS_TOKEN}}"
+            }
+          ]
+        }
+      },
+      "id": "kb-reply-0002",
+      "name": "Fetch Recent Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [380, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const posts = $input.first().json.data || [];\nreturn posts.map(post => ({\n  json: {\n    postId: post.id,\n    postText: post.text,\n    postTimestamp: post.timestamp\n  }\n}));"
+      },
+      "id": "kb-reply-0003",
+      "name": "Split Posts Array",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.threads.net/v1.0/{{$json.postId}}/replies",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "id,text,timestamp,username"
+            },
+            {
+              "name": "access_token",
+              "value": "={{$env.THREADS_ACCESS_TOKEN}}"
+            }
+          ]
+        }
+      },
+      "id": "kb-reply-0004",
+      "name": "Fetch Post Replies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [820, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\n// We maintain an in-memory or static cache of replied IDs\nconst staticData = $getWorkflowStaticData('global');\nstaticData.repliedIds = staticData.repliedIds || [];\n\nfor (const item of items) {\n  const replies = item.json.data || [];\n  const parentPostText = item.pairedItem ? $items('Split Posts Array')[item.pairedItem.item].json.postText : '';\n  \n  for (const reply of replies) {\n    // Skip if reply is already handled or from self account\n    if (staticData.repliedIds.includes(reply.id)) continue;\n    if (reply.username && reply.username.toLowerCase().includes('kebundata')) continue;\n    \n    // Mark as seen\n    staticData.repliedIds.push(reply.id);\n    if (staticData.repliedIds.length > 500) {\n      staticData.repliedIds.shift(); // Keep cache size manageable\n    }\n    \n    results.push({\n      json: {\n        commentId: reply.id,\n        commentText: reply.text,\n        username: reply.username || 'Sahabat Kebun',\n        parentPostText: parentPostText,\n        userId: $env.THREADS_USER_ID,\n        accessToken: $env.THREADS_ACCESS_TOKEN\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "id": "kb-reply-0005",
+      "name": "Filter New Unreplied Comments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{$env.GEMINI_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda adalah sistem balasan komen AI KebunData (Gabungan Agronomist + Community Marketer) di Meta Threads.\\n\\nPost Asal: {{$json.parentPostText}}\\nKomen Daripada @{{$json.username}}: {{$json.commentText}}\\n\\nSyarat Balasan:\\n1. Nada: Santai, mesra, membina ('member kebun'), dalam Bahasa Melayu santai / Manglish.\\n2. Nilai: Berikan fakta / solusi agronomi ringkas secara logik (1-2 ayat).\\n3. CONVERSATION EXTENDER (WAJIB): Jangan tamatkan balasan dengan noktah sahaja. Sentiasa tanya satu soalan susulan balik kepada penanya (cth: jenis media, kaedah siraman, jenis benih) supaya dia balas balik.\\n4. Panjang: 2-3 ayat maksimum.\\n\\nOutputkan teks balasan sahaja tanpa tanda petik.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 300\n  }\n}"
+      },
+      "id": "kb-reply-0006",
+      "name": "Generate Reply (Gemini Two-Tier)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1260, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.threads.net/v1.0/{{$json.userId}}/threads",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "media_type",
+              "value": "TEXT"
+            },
+            {
+              "name": "text",
+              "value": "={{$json.candidates[0].content.parts[0].text.trim()}}"
+            },
+            {
+              "name": "reply_to_id",
+              "value": "={{$node[\"Filter New Unreplied Comments\"].json[\"commentId\"]}}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{$json.accessToken}}"
+            }
+          ]
+        }
+      },
+      "id": "kb-reply-0007",
+      "name": "Create Reply Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1480, 300]
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "seconds"
+      },
+      "id": "kb-reply-0008",
+      "name": "Wait 3 Seconds",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.threads.net/v1.0/{{$node[\"Filter New Unreplied Comments\"].json[\"userId\"]}}/threads_publish",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{$node[\"Create Reply Container\"].json[\"id\"]}}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{$node[\"Filter New Unreplied Comments\"].json[\"accessToken\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "kb-reply-0009",
+      "name": "Publish Reply to Threads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1920, 300]
+    }
+  ],
+  "connections": {
+    "Poll Every 10 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Fetch Recent Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Recent Posts": {
+      "main": [
+        [
+          {
+            "node": "Split Posts Array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Posts Array": {
+      "main": [
+        [
+          {
+            "node": "Fetch Post Replies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Post Replies": {
+      "main": [
+        [
+          {
+            "node": "Filter New Unreplied Comments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter New Unreplied Comments": {
+      "main": [
+        [
+          {
+            "node": "Generate Reply (Gemini Two-Tier)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Reply (Gemini Two-Tier)": {
+      "main": [
+        [
+          {
+            "node": "Create Reply Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Reply Container": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 Seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3 Seconds": {
+      "main": [
+        [
+          {
+            "node": "Publish Reply to Threads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
