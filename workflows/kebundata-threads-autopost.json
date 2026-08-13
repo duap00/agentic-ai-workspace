@@ -16,7 +16,39 @@
       "name": "Schedule Trigger (Peak Times 8am, 12pm, 8pm)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [180, 300]
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "threadsAccessToken",
+              "value": "={{ $vars.THREADS_ACCESS_TOKEN || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "threadsUserId",
+              "value": "={{ $vars.THREADS_USER_ID || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-3",
+              "name": "geminiApiKey",
+              "value": "={{ $vars.GEMINI_API_KEY || \"\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "kb-post-0000",
+      "name": "Setup Credentials & Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [300, 300]
     },
     {
       "parameters": {
@@ -26,7 +58,7 @@
       "name": "Select Topic & Angle",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [400, 300]
+      "position": [520, 300]
     },
     {
       "parameters": {
@@ -37,7 +69,7 @@
           "parameters": [
             {
               "name": "key",
-              "value": "={{$env.GEMINI_API_KEY}}"
+              "value": "={{ $('Setup Credentials & Config').item.json.geminiApiKey }}"
             }
           ]
         },
@@ -49,17 +81,17 @@
       "name": "Generate Viral Post (Gemini)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [620, 300]
+      "position": [740, 300]
     },
     {
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nconst postText = response.candidates[0].content.parts[0].text.trim();\nreturn {\n  json: {\n    postText: postText,\n    userId: $env.THREADS_USER_ID,\n    accessToken: $env.THREADS_ACCESS_TOKEN\n  }\n};"
+        "jsCode": "const response = $input.first().json;\nconst postText = response.candidates[0].content.parts[0].text.trim();\nconst config = $('Setup Credentials & Config').first().json;\nreturn {\n  json: {\n    postText: postText,\n    userId: config.threadsUserId,\n    accessToken: config.threadsAccessToken\n  }\n};"
       },
       "id": "kb-post-0004",
       "name": "Extract Post Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [840, 300]
+      "position": [960, 300]
     },
     {
       "parameters": {
@@ -79,7 +111,7 @@
             },
             {
               "name": "access_token",
-              "value": "={{$json.accessToken}}"
+              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
             }
           ]
         }
@@ -88,7 +120,7 @@
       "name": "Create Threads Container",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1060, 300]
+      "position": [1180, 300]
     },
     {
       "parameters": {
@@ -99,7 +131,7 @@
       "name": "Wait 3 Seconds",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [1280, 300]
+      "position": [1400, 300]
     },
     {
       "parameters": {
@@ -115,7 +147,7 @@
             },
             {
               "name": "access_token",
-              "value": "={{$node[\"Extract Post Text\"].json[\"accessToken\"]}}"
+              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
             }
           ]
         }
@@ -124,11 +156,22 @@
       "name": "Publish to Threads",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1500, 300]
+      "position": [1620, 300]
     }
   ],
   "connections": {
     "Schedule Trigger (Peak Times 8am, 12pm, 8pm)": {
+      "main": [
+        [
+          {
+            "node": "Setup Credentials & Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setup Credentials & Config": {
       "main": [
         [
           {

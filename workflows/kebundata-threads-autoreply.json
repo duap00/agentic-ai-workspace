@@ -16,7 +16,39 @@
       "name": "Poll Every 10 Minutes",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [160, 300]
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "threadsAccessToken",
+              "value": "={{ $vars.THREADS_ACCESS_TOKEN || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "threadsUserId",
+              "value": "={{ $vars.THREADS_USER_ID || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-3",
+              "name": "geminiApiKey",
+              "value": "={{ $vars.GEMINI_API_KEY || \"\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "kb-reply-0000",
+      "name": "Setup Credentials & Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [300, 300]
     },
     {
       "parameters": {
@@ -35,7 +67,7 @@
             },
             {
               "name": "access_token",
-              "value": "={{$env.THREADS_ACCESS_TOKEN}}"
+              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
             }
           ]
         }
@@ -44,7 +76,7 @@
       "name": "Fetch Recent Posts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [380, 300]
+      "position": [520, 300]
     },
     {
       "parameters": {
@@ -54,7 +86,7 @@
       "name": "Split Posts Array",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [600, 300]
+      "position": [740, 300]
     },
     {
       "parameters": {
@@ -69,7 +101,7 @@
             },
             {
               "name": "access_token",
-              "value": "={{$env.THREADS_ACCESS_TOKEN}}"
+              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
             }
           ]
         }
@@ -78,17 +110,17 @@
       "name": "Fetch Post Replies",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [820, 300]
+      "position": [960, 300]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst results = [];\n\n// We maintain an in-memory or static cache of replied IDs\nconst staticData = $getWorkflowStaticData('global');\nstaticData.repliedIds = staticData.repliedIds || [];\n\nfor (const item of items) {\n  const replies = item.json.data || [];\n  const parentPostText = item.pairedItem ? $items('Split Posts Array')[item.pairedItem.item].json.postText : '';\n  \n  for (const reply of replies) {\n    // Skip if reply is already handled or from self account\n    if (staticData.repliedIds.includes(reply.id)) continue;\n    if (reply.username && reply.username.toLowerCase().includes('kebundata')) continue;\n    \n    // Mark as seen\n    staticData.repliedIds.push(reply.id);\n    if (staticData.repliedIds.length > 500) {\n      staticData.repliedIds.shift(); // Keep cache size manageable\n    }\n    \n    results.push({\n      json: {\n        commentId: reply.id,\n        commentText: reply.text,\n        username: reply.username || 'Sahabat Kebun',\n        parentPostText: parentPostText,\n        userId: $env.THREADS_USER_ID,\n        accessToken: $env.THREADS_ACCESS_TOKEN\n      }\n    });\n  }\n}\n\nreturn results;"
+        "jsCode": "const items = $input.all();\nconst results = [];\nconst config = $('Setup Credentials & Config').first().json;\n\n// We maintain an in-memory or static cache of replied IDs\nconst staticData = $getWorkflowStaticData('global');\nstaticData.repliedIds = staticData.repliedIds || [];\n\nfor (const item of items) {\n  const replies = item.json.data || [];\n  const parentPostText = item.pairedItem && $items('Split Posts Array')[item.pairedItem.item] ? $items('Split Posts Array')[item.pairedItem.item].json.postText : '';\n  \n  for (const reply of replies) {\n    // Skip if reply is already handled or from self account\n    if (staticData.repliedIds.includes(reply.id)) continue;\n    if (reply.username && reply.username.toLowerCase().includes('kebundata')) continue;\n    \n    // Mark as seen\n    staticData.repliedIds.push(reply.id);\n    if (staticData.repliedIds.length > 500) {\n      staticData.repliedIds.shift(); // Keep cache size manageable\n    }\n    \n    results.push({\n      json: {\n        commentId: reply.id,\n        commentText: reply.text,\n        username: reply.username || 'Sahabat Kebun',\n        parentPostText: parentPostText,\n        userId: config.threadsUserId,\n        accessToken: config.threadsAccessToken\n      }\n    });\n  }\n}\n\nreturn results;"
       },
       "id": "kb-reply-0005",
       "name": "Filter New Unreplied Comments",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1040, 300]
+      "position": [1180, 300]
     },
     {
       "parameters": {
@@ -99,7 +131,7 @@
           "parameters": [
             {
               "name": "key",
-              "value": "={{$env.GEMINI_API_KEY}}"
+              "value": "={{ $('Setup Credentials & Config').item.json.geminiApiKey }}"
             }
           ]
         },
@@ -111,7 +143,7 @@
       "name": "Generate Reply (Gemini Two-Tier)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1260, 300]
+      "position": [1400, 300]
     },
     {
       "parameters": {
@@ -135,7 +167,7 @@
             },
             {
               "name": "access_token",
-              "value": "={{$json.accessToken}}"
+              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
             }
           ]
         }
@@ -144,7 +176,7 @@
       "name": "Create Reply Container",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1480, 300]
+      "position": [1620, 300]
     },
     {
       "parameters": {
@@ -155,7 +187,7 @@
       "name": "Wait 3 Seconds",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [1700, 300]
+      "position": [1840, 300]
     },
     {
       "parameters": {
@@ -171,7 +203,7 @@
             },
             {
               "name": "access_token",
-              "value": "={{$node[\"Filter New Unreplied Comments\"].json[\"accessToken\"]}}"
+              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
             }
           ]
         }
@@ -180,11 +212,22 @@
       "name": "Publish Reply to Threads",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1920, 300]
+      "position": [2060, 300]
     }
   ],
   "connections": {
     "Poll Every 10 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Setup Credentials & Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setup Credentials & Config": {
       "main": [
         [
           {
