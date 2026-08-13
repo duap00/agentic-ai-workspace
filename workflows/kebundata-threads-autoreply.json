@@ -21,7 +21,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "=https://graph.threads.net/v1.0/{{$env.THREADS_USER_ID}}/threads",
+        "url": "https://graph.threads.net/v1.0/me/threads",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -116,7 +116,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://graph.threads.net/v1.0/{{$json.userId}}/threads",
+        "url": "https://graph.threads.net/v1.0/me/threads",
         "sendBody": true,
         "contentType": "form-urlencoded",
         "bodyParameters": {
@@ -160,7 +160,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://graph.threads.net/v1.0/{{$node[\"Filter New Unreplied Comments\"].json[\"userId\"]}}/threads_publish",
+        "url": "https://graph.threads.net/v1.0/me/threads_publish",
         "sendBody": true,
         "contentType": "form-urlencoded",
         "bodyParameters": {

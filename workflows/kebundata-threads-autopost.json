@@ -64,7 +64,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://graph.threads.net/v1.0/{{$json.userId}}/threads",
+        "url": "https://graph.threads.net/v1.0/me/threads",
         "sendBody": true,
         "contentType": "form-urlencoded",
         "bodyParameters": {
@@ -104,7 +104,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://graph.threads.net/v1.0/{{$node[\"Extract Post Text\"].json[\"userId\"]}}/threads_publish",
+        "url": "https://graph.threads.net/v1.0/me/threads_publish",
         "sendBody": true,
         "contentType": "form-urlencoded",
         "bodyParameters": {
