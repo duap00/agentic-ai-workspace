@@ -4,18 +4,19 @@ Panduan lengkap untuk memasang dan menjalankan sistem **Auto-Post & Two-Tier Aut
 
 ---
 
-## 🏛️ 1. Seni Bina Sistem (Two-Tier Growth Engine)
+## 🏛️ 1. Seni Bina Sistem (Three-Tier Organic Growth Engine)
 
 1. **Auto-Post (The Hook Specialist):**
    - Beroperasi pada waktu puncak trafik Threads (8:00 AM, 12:30 PM, 8:30 PM MYT).
-   - Menghasilkan post berimpak tinggi dalam gaya *Santai BM / Manglish* dengan struktur:
-     - **Hook** (pecah mitos / data telemetry mengejutkan).
-     - **Isi Ringkas** (2-3 poin praktikal).
-     - **Engagement Loop** (soalan terbuka untuk mencetuskan komen).
-2. **Auto-Reply (The Conversation Multiplier):**
-   - Mendengar komen baharu setiap 10 minit.
+   - Menghasilkan post berimpak tinggi dalam gaya *Santai BM / Manglish* dengan struktur Hook, Isi Ringkas, dan Engagement Loop.
+2. **Auto-Reply Inbound (The Conversation Multiplier):**
+   - Mendengar komen baharu di bawah post anda setiap 10 minit.
    - Menggabungkan kepakaran **Farmer Agent** (fakta agronomi tepat) dan **Marketer Agent** (gaya mesra member kebun).
    - **WAJIB menyoal semula pengguna** bagi membina *multi-turn discussion* yang menaikkan ranking algoritma Threads.
+3. **Outbound Niche Hunter (The Community Growth Scout):**
+   - Beroperasi setiap 2 jam (atau melalui Python CLI / cron).
+   - Mencari perbualan & soalan awam berkait kata kunci (*pokok cili*, *daun kuning*, *fertigasi*, *baja AB*, dll.).
+   - AI menapis relevansi, memberikan 1 tip berguna secara bersahaja (tanpa iklan keras / link spam), dan bertanyakan soalan ramah untuk menarik mereka melawat & follow profil KebunData.
 
 ---
 
@@ -100,9 +101,13 @@ python skills/generate_threads_content.py
 ```
 *Skrip ini akan menguji prompt Marketer SOUL dan menghasilkan contoh post viral serta contoh balasan komen bercabang.*
 
-### Uji Sambungan Meta Threads API:
+### Uji Outbound Niche Hunter (Carian & Komen Komuniti):
 ```bash
-python skills/threads_client.py
+# Ujian Simulasi / Dry-run (Selamat, tiada komen dipost)
+python skills/outbound_threads_engager.py
+
+# Mod Siaran Langsung (Live Outbound Comment)
+python skills/outbound_threads_engager.py --publish
 ```
 
 ---
@@ -111,9 +116,10 @@ python skills/threads_client.py
 
 1. Buka antaramuka **n8n Web Interface** anda di OCI server.
 2. Pergi ke **Workflows** > klik **Add Workflow** > menu tiga titik (top right) > **Import from File**.
-3. Import 2 blueprint yang telah disediakan:
+3. Terdapat 3 blueprint yang telah disediakan dalam folder `workflows/`:
    - `workflows/kebundata-threads-autopost.json` (Penjadualan Post Automatik).
-   - `workflows/kebundata-threads-autoreply.json` (Pendengar & Penjawab Komen Automatik).
+   - `workflows/kebundata-threads-autoreply.json` (Pendengar & Penjawab Komen Inbound Automatik).
+   - `workflows/kebundata-threads-outbound-engager.json` (Pemburu Topik Niche & Penjawab Komuniti Outbound).
 4. Pastikan pembolehubah `THREADS_USER_ID`, `THREADS_ACCESS_TOKEN`, dan `GEMINI_API_KEY` telah dimasukkan ke dalam n8n Environment Variables atau disesuaikan pada node HTTP Request.
 5. Tukarkan status workflow kepada **Active: True**.
 

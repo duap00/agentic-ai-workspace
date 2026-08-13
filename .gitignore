@@ -5,6 +5,8 @@ __pycache__/
 *.pyc
 .DS_Store
 *.log
+skills/engaged_threads.json
+engaged_threads.json
 
 # Customer Leads & Excel Reports (Odoo exports)
 *.xlsx
