@@ -36,11 +36,18 @@ Meta telah melancarkan **Official Threads API (Graph API v1.0)**. Ikuti langkah 
 
 ### Langkah 2.3: Jana User Access Token & Dapatkan User ID
 1. Pergi ke **Threads API > Tools** (atau Graph API Explorer).
-2. Pilih App anda dan pastikan kebenaran (*Permissions*) ini ditandakan:
-   - `threads_basic`
-   - `threads_content_publish`
-   - `threads_read_replies`
-   - `threads_manage_replies`
+2. Pilih App anda (`App ID: 2229806474461275`, `Business ID: 107558840944600`) dan tandakan kebenaran (*Permissions*) yang diperlukan (Semua 11 Permissions):
+   - `threads_basic` — Membaca profil dan post pengguna sendiri
+   - `threads_content_publish` — Mencipta dan menerbitkan post/media
+   - `threads_delete` — Memadamkan post
+   - `threads_keyword_search` — Carian topik/kata kunci
+   - `threads_location_tagging` — Carian dan tagging lokasi
+   - `threads_manage_insights` — Analitik akaun dan post
+   - `threads_manage_mentions` — Memantau sebutan akaun (*mentions*)
+   - `threads_manage_replies` — Moderasi balasan (sembunyi/buka & had balas)
+   - `threads_profile_discovery` — Terokai profil awam & post awam
+   - `threads_read_replies` — Membaca balasan dan rantaian perbualan
+   - `threads_share_to_instagram` — Perkongsian silang ke Instagram
 3. Klik **Generate Token** dan luluskan akses ke akaun KebunData Threads anda.
 4. Tukarkan token pendek tersebut kepada **Long-Lived Access Token** (sah selama 60 hari) melalui endpoint Token Exchange Meta.
 5. Buat panggilan pengesahan untuk dapatkan User ID:
@@ -55,13 +62,30 @@ Meta telah melancarkan **Official Threads API (Graph API v1.0)**. Ikuti langkah 
 Tambahkan pembolehubah berikut ke dalam fail `.env` anda:
 
 ```ini
+# Meta Threads API Configuration
+THREADS_APP_ID=2229806474461275
+THREADS_APP_SECRET=your_threads_app_secret_here
+THREADS_BUSINESS_ID=107558840944600
+THREADS_USE_CASE=THREADS_API
+
+# Threads Account Credentials
+THREADS_USER_ID=your_threads_user_id_here
+THREADS_ACCESS_TOKEN=your_threads_long_lived_access_token_here
+
+# All Enabled Threads API Scopes (11 Total)
+THREADS_SCOPES=threads_basic,threads_content_publish,threads_delete,threads_keyword_search,threads_location_tagging,threads_manage_insights,threads_manage_mentions,threads_manage_replies,threads_profile_discovery,threads_read_replies,threads_share_to_instagram
+
+# Threads Graph API Endpoints
+THREADS_API_BASE_URL=https://graph.threads.net/v1.0
+THREADS_GRAPH_BASE_URL=https://graph.facebook.com/v21.0
+
 # Google Gemini API (Untuk Marketer & Farmer Agent)
-GEMINI_API_KEY=AIzaSy...
+GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-2.5-flash
 
-# Meta Threads API
-THREADS_USER_ID=17841400000000000
-THREADS_ACCESS_TOKEN=THQWJ...
+# Telegram Credentials
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+TELEGRAM_CHAT_ID=your_telegram_chat_id_here
 ```
 
 ---
