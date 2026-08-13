@@ -1,0 +1,354 @@
+{
+  "name": "KebunData Threads - Outbound Niche Hunter & Auto-Engager",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "kb-out-0001",
+      "name": "Run Every 2 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "threadsAccessToken",
+              "value": "={{ $vars.THREADS_ACCESS_TOKEN || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "threadsUserId",
+              "value": "={{ $vars.THREADS_USER_ID || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-3",
+              "name": "geminiApiKey",
+              "value": "={{ $vars.GEMINI_API_KEY || \"\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "kb-out-0000",
+      "name": "Setup Credentials & Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const keywords = [\n  'pokok cili',\n  'daun kuning',\n  'fertigasi',\n  'kebun bandar',\n  'baja AB',\n  'hidroponik',\n  'akar reput',\n  'serangan kutu trip',\n  'cocopeat pokok',\n  'tanaman pasu',\n  'pokok layu',\n  'sembur racun organik'\n];\n\nconst selectedKeyword = keywords[Math.floor(Math.random() * keywords.length)];\nconst config = $('Setup Credentials & Config').first().json;\n\nreturn {\n  json: {\n    keyword: selectedKeyword,\n    threadsAccessToken: config.threadsAccessToken,\n    threadsUserId: config.threadsUserId,\n    geminiApiKey: config.geminiApiKey\n  }\n};"
+      },
+      "id": "kb-out-0002",
+      "name": "Pick Random Niche Keyword",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.threads.net/v1.0/keyword_search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.keyword }}"
+            },
+            {
+              "name": "search_type",
+              "value": "RECENT"
+            },
+            {
+              "name": "fields",
+              "value": "id,text,timestamp,username"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
+            }
+          ]
+        }
+      },
+      "id": "kb-out-0003",
+      "name": "Search Threads by Keyword",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [740, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.first().json.data || [];\nconst config = $('Setup Credentials & Config').first().json;\nconst keywordInfo = $('Pick Random Niche Keyword').first().json;\n\n// Static state for memory across runs to prevent double-commenting\nconst staticData = $getWorkflowStaticData('global');\nstaticData.engagedPostIds = staticData.engagedPostIds || [];\n\nconst candidates = [];\n\nfor (const post of items) {\n  if (!post.id || !post.text) continue;\n  if (staticData.engagedPostIds.includes(post.id)) continue;\n  \n  // Skip own posts\n  if (post.username && (post.username.toLowerCase().includes('kebundata') || post.username.toLowerCase().includes('ak.kamil'))) continue;\n  \n  // Skip very short posts\n  if (post.text.trim().length < 20) continue;\n  \n  // Human jitter delay (30 to 90 seconds)\n  const jitter = Math.floor(Math.random() * (90 - 30 + 1)) + 30;\n  \n  candidates.push({\n    json: {\n      postId: post.id,\n      postText: post.text,\n      postUsername: post.username || 'Geng Kebun',\n      matchedKeyword: keywordInfo.keyword,\n      jitterSeconds: jitter,\n      threadsAccessToken: config.threadsAccessToken,\n      threadsUserId: config.threadsUserId,\n      geminiApiKey: config.geminiApiKey\n    }\n  });\n  \n  // Pacing: Max 1 high-quality outbound reply per execution run\n  if (candidates.length >= 1) {\n    staticData.engagedPostIds.push(post.id);\n    if (staticData.engagedPostIds.length > 500) {\n      staticData.engagedPostIds.shift();\n    }\n    break;\n  }\n}\n\nreturn candidates;"
+      },
+      "id": "kb-out-0004",
+      "name": "Select 1 Fresh Candidate Post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $('Setup Credentials & Config').item.json.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah Ahmad Kamil / KebunData (Gabungan Agronomist Pakar + Sahabat Kebun Mesra) di Meta Threads.\\n\\nPost Pengguna Lain: \\\"{{$json.postText}}\\\" (oleh @{{$json.postUsername}})\\nKeyword Dijumpai: {{$json.matchedKeyword}}\\n\\nTugasan:\\n1. Analisa adakah post ini relevan dengan perbualan tanaman / pertanian / berkebun / masalah pokok / baja / fertigasi. Jika langsung TIDAK relevan (contoh: spam, politik, berita artis), balas dengan perkataan: SKIP\\n2. Jika RELEVAN, tulis SATU komen balasan yang sangat mesra dan bernilai tinggi:\\n   - NADA: Santai, bersahaja macam kawan kebun (Bahasa Melayu / Manglish santai).\\n   - NILAI: Berikan 1 tip agronomi logik & tepat yang selesaikan atau bantu masalah yang dibangkitkan.\\n   - DILARANG: Jangan menjual produk, jangan letak link, jangan ajak follow secara kasar, elakkan nada robotik/formal.\\n   - CONVERSATION EXTENDER: Tanya SATU soalan santai di hujung ayat supaya dia rasa seronok nak bersembang balik.\\n   - PANJANG: 2 hingga 3 ayat sahaja.\\n\\nOutputkan teks balasan sahaja (atau perkataan 'SKIP').\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.85,\n    \"maxOutputTokens\": 300\n  }\n}"
+      },
+      "id": "kb-out-0005",
+      "name": "Evaluate & Generate Helpful Reply (Gemini)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1180, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.candidates[0].content.parts[0].text.trim() }}",
+              "rightValue": "SKIP",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "kb-out-0006",
+      "name": "Is Relevant Post?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1400, 300]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $('Select 1 Fresh Candidate Post').item.json.jitterSeconds || 45 }}",
+        "unit": "seconds"
+      },
+      "id": "kb-out-0007",
+      "name": "Anti-Spam Human Jitter",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1620, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.threads.net/v1.0/me/threads",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "media_type",
+              "value": "TEXT"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('Evaluate & Generate Helpful Reply (Gemini)').item.json.candidates[0].content.parts[0].text.trim() }}"
+            },
+            {
+              "name": "reply_to_id",
+              "value": "={{ $('Select 1 Fresh Candidate Post').item.json.postId }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
+            }
+          ]
+        }
+      },
+      "id": "kb-out-0008",
+      "name": "Create Reply Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1840, 200]
+    },
+    {
+      "parameters": {
+        "amount": 4,
+        "unit": "seconds"
+      },
+      "id": "kb-out-0009",
+      "name": "Wait 4s for Ingestion",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2060, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.threads.net/v1.0/me/threads_publish",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $node[\"Create Reply Container\"].json[\"id\"] }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
+            }
+          ]
+        }
+      },
+      "id": "kb-out-0010",
+      "name": "Publish Outbound Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2280, 200]
+    }
+  ],
+  "connections": {
+    "Run Every 2 Hours": {
+      "main": [
+        [
+          {
+            "node": "Setup Credentials & Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setup Credentials & Config": {
+      "main": [
+        [
+          {
+            "node": "Pick Random Niche Keyword",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Random Niche Keyword": {
+      "main": [
+        [
+          {
+            "node": "Search Threads by Keyword",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Threads by Keyword": {
+      "main": [
+        [
+          {
+            "node": "Select 1 Fresh Candidate Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select 1 Fresh Candidate Post": {
+      "main": [
+        [
+          {
+            "node": "Evaluate & Generate Helpful Reply (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate & Generate Helpful Reply (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Is Relevant Post?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Relevant Post?": {
+      "main": [
+        [
+          {
+            "node": "Anti-Spam Human Jitter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Anti-Spam Human Jitter": {
+      "main": [
+        [
+          {
+            "node": "Create Reply Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Reply Container": {
+      "main": [
+        [
+          {
+            "node": "Wait 4s for Ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 4s for Ingestion": {
+      "main": [
+        [
+          {
+            "node": "Publish Outbound Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
