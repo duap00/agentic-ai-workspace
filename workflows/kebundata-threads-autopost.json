@@ -1,5 +1,5 @@
 {
-  "name": "KebunData Threads - Viral Auto Poster",
+  "name": "KebunData Threads - Viral Auto Poster (Human-Paced)",
   "nodes": [
     {
       "parameters": {
@@ -52,18 +52,29 @@
     },
     {
       "parameters": {
-        "jsCode": "const topics = [\n  {\n    category: 'Soil Moisture & Watering',\n    focus: 'Pokok layu sebab lemas air vs kurang air - kenapa sensor kelembapan penting',\n    fact: 'Akar pokok cili perlukan oksigen dalam media. Bila kelembapan cecah 100% berterusan >6 jam, akar mula mereput (root rot) sebelum daun tunjuk tanda layu.'\n  },\n  {\n    category: 'Baja & EC Level',\n    focus: 'Membazir baja AB sebab bacaan EC lari waktu panas terik',\n    fact: 'Waktu tengah hari panas terik, transpirasi laju. Pokok perlukan air lebih banyak daripada baja pekat. Siram baja EC tinggi masa panas buat daun terbakar.'\n  },\n  {\n    category: 'Pest & Penyakit',\n    focus: 'Kutu trip dan hama merah - punca daun cili berkedut/keriting',\n    fact: 'Kutu trip serang pucuk muda sebelum nampak dengan mata kasar. Petani biasa sembur racun bila daun dah kerinting mangkuk, masa tu populasi kutu dah matang.'\n  },\n  {\n    category: 'IoT Tech ROI',\n    focus: 'Banding kos sensor IoT RM200 vs rugi satu musim tuaian RM5,000',\n    fact: 'Kerosakan pam fertigasi atau paip tersumbat yang lambat dikesan 24 jam boleh bunuh 500 polibeg cili serentak.'\n  },\n  {\n    category: 'Cocopeat vs Tanah Campuran',\n    focus: 'Bahaya guna cocopeat mentah tak rendam / basuh tannin',\n    fact: 'Cocopeat baru ada kandungan garam dan tannin tinggi. Kalau tak basuh sampai EC < 0.5, anak benih terbantut dan daun kuning dari bawah.'\n  }\n];\n\nconst selected = topics[Math.floor(Math.random() * topics.length)];\nreturn {\n  json: {\n    category: selected.category,\n    focus: selected.focus,\n    fact: selected.fact,\n    timestamp: new Date().toISOString()\n  }\n};"
+        "jsCode": "const topics = [\n  {\n    category: 'Soil Moisture & Root Rot',\n    focus: 'Kenapa pokok cili layu waktu petang walaupun media basah lencun',\n    fact: 'Bila tanah terlebih basah berterusan >6 jam, akar lemas sebab ketiadaan oksigen. Akar reput tak mampu pam air naik ke daun, jadi pokok layu macam kehausan.'\n  },\n  {\n    category: 'Baja & EC Panas Terik',\n    focus: 'Silap besar siram baja pekat (EC tinggi) waktu panas tengah hari',\n    fact: 'Waktu matahari terik, kadar sejatan (transpirasi) tinggi gila. Pokok cuma nak sedut molekul air H2O, bukan garam baja. Siram baja pekat masa panas buat sel akar dehidrasi & daun terbakar.'\n  },\n  {\n    category: 'Pest - Kutu Trip & Hama',\n    focus: 'Tanda awal pucuk cili berkedut kerinting sebelum terlambat',\n    fact: 'Kutu trip hisap cecair sel pucuk muda masa daun sebesar kuman. Bila daun dah kembang & kerinting mangkuk, racun serangga dah kurang berkesan sebab populasi dah merebak.'\n  },\n  {\n    category: 'IoT Sensor ROI',\n    focus: 'Pelaburan sensor IoT RM200 vs risiko rugi tuaian RM5,000 akibat pam mati',\n    fact: 'Kerosakan pam fertigasi atau paip tersumbat yang lambat dikesan 24 jam boleh matikan ratusan polibeg serentak dalam fasa berbuah lebat.'\n  },\n  {\n    category: 'Cocopeat & Tannin',\n    focus: 'Bahaya tanam terus dalam sabut kelapa (cocopeat) baru beli tanpa cuci',\n    fact: 'Cocopeat mentah ada kandungan garam sodium & tannin yang tinggi. Kalau tak basuh sampai bacaan EC < 0.5, anak benih jadi kerdil & daun bawah mula menguning.'\n  },\n  {\n    category: 'Kalsium & Bunga Gugur',\n    focus: 'Punca putik cili / tomato hitam di bahagian bontot (Blossom End Rot)',\n    fact: 'Kekurangan kalsium bukan selalu sebab baja tak cukup, tapi sebab siraman tak sekata. Kalsium bergerak ikut aliran air transpirasi ke buah.'\n  },\n  {\n    category: 'pH Media & Nutrisi',\n    focus: 'Kenapa daun pokok kuning walaupun dah tabur macam-macam baja',\n    fact: 'Bila pH media terlalu berasid (< 5.5), akar pokok terkunci (nutrient lockout). Pokok tak boleh serap Nitrogen & Magnesium walaupun baja bertimbun dalam pasu.'\n  },\n  {\n    category: 'Siraman Pagi vs Malam',\n    focus: 'Mitos siram pokok waktu malam buat kulat merebak',\n    fact: 'Siram lewat malam buat daun basah sepanjang malam tanpa angin, mengundang spora kulat antraknos. Waktu siraman emas adalah antara 7.00 - 8.30 pagi.'\n  }\n];\n\nconst selected = topics[Math.floor(Math.random() * topics.length)];\n// Anti-bot jitter: random delay between 20 to 120 seconds\nconst jitter = Math.floor(Math.random() * (120 - 20 + 1)) + 20;\n\nreturn {\n  json: {\n    category: selected.category,\n    focus: selected.focus,\n    fact: selected.fact,\n    jitterSeconds: jitter,\n    timestamp: new Date().toISOString()\n  }\n};\n"
       },
       "id": "kb-post-0002",
-      "name": "Select Topic & Angle",
+      "name": "Select Topic & Add Human Jitter",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [520, 300]
     },
     {
       "parameters": {
+        "amount": "={{ $json.jitterSeconds || 30 }}",
+        "unit": "seconds"
+      },
+      "id": "kb-post-0002-jitter",
+      "name": "Random Schedule Jitter",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [740, 300]
+    },
+    {
+      "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -75,13 +86,13 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah KebunData Threads Growth Specialist. Hasilkan 1 post Threads santai yang tular dalam Bahasa Melayu santai / Manglish.\\n\\nTopik: {{$json.focus}}\\nFakta Agronomi: {{$json.fact}}\\n\\nSyarat Format:\\n1. Baris 1-2: Hook yang curi perhatian / pecah mitos.\\n2. Baris 3-5: Isi ringkas & praktikal (jangan formal macam surat).\\n3. Baris Akhir: WAJIB satu soalan terbuka yang mesra untuk ajak pembaca komen kongsi pengalaman.\\n4. Maksimum 1-2 hashtag santai (#KebunData #KebunBandar).\\n\\nOutputkan teks post SAHAJA tanpa tanda petik.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.8,\n    \"maxOutputTokens\": 500\n  }\n}"
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah Ahmad Kamil / KebunData di Meta Threads. Cipta 1 post Threads santai & tular yang nampak 100% tulisan manusia sebenar (bukan bot).\\n\\nTopik: {{$json.focus}}\\nFakta Agronomi: {{$json.fact}}\\n\\nGaya Penulisan (Human Persona & Anti-Bot):\\n1. Hook (Baris 1-2): Mula dengan ayat santai yang pecah mitos atau soalan mencuit hati (cth: 'Ramai ingat siram banyak pokok makin segar, padahal...', 'Pernah tak korang perasan...').\\n2. Isi Ringkas (Baris 3-5): Terangkan sebab secara logik & praktikal dalam 2-3 ayat santai (Bahasa Melayu / Manglish santai).\\n3. Pertanyaan Terbuka (Baris Akhir): Tanya geng kebun satu soalan santai untuk kongsi pengalaman.\\n4. Hashtag: Maksimum 1-2 hashtag sahaja (#KebunData #KebunBandar).\\n5. Dilarang guna nada iklan keras, tiada ayat 'Sila layari pautan', jangan guna nada formal/robot.\\n\\nOutputkan teks post sahaja tanpa tanda petik.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.85,\n    \"maxOutputTokens\": 500\n  }\n}"
       },
       "id": "kb-post-0003",
-      "name": "Generate Viral Post (Gemini)",
+      "name": "Generate Viral Post (Gemini Natural Voice)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [740, 300]
+      "position": [960, 300]
     },
     {
       "parameters": {
@@ -91,7 +102,7 @@
       "name": "Extract Post Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 300]
+      "position": [1180, 300]
     },
     {
       "parameters": {
@@ -120,18 +131,18 @@
       "name": "Create Threads Container",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1180, 300]
+      "position": [1400, 300]
     },
     {
       "parameters": {
-        "amount": 3,
+        "amount": 4,
         "unit": "seconds"
       },
       "id": "kb-post-0006",
-      "name": "Wait 3 Seconds",
+      "name": "Wait 4s for Ingestion",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [1400, 300]
+      "position": [1620, 300]
     },
     {
       "parameters": {
@@ -152,11 +163,11 @@
           ]
         }
       },
-      "id": "kb-post-0007",
+      "id": "kb-reply-0007",
       "name": "Publish to Threads",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1620, 300]
+      "position": [1840, 300]
     }
   ],
   "connections": {
@@ -175,25 +186,36 @@
       "main": [
         [
           {
-            "node": "Select Topic & Angle",
+            "node": "Select Topic & Add Human Jitter",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Select Topic & Angle": {
+    "Select Topic & Add Human Jitter": {
       "main": [
         [
           {
-            "node": "Generate Viral Post (Gemini)",
+            "node": "Random Schedule Jitter",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Generate Viral Post (Gemini)": {
+    "Random Schedule Jitter": {
+      "main": [
+        [
+          {
+            "node": "Generate Viral Post (Gemini Natural Voice)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Viral Post (Gemini Natural Voice)": {
       "main": [
         [
           {
@@ -219,14 +241,14 @@
       "main": [
         [
           {
-            "node": "Wait 3 Seconds",
+            "node": "Wait 4s for Ingestion",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait 3 Seconds": {
+    "Wait 4s for Ingestion": {
       "main": [
         [
           {

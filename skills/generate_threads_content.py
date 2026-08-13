@@ -79,8 +79,8 @@ def call_gemini(prompt, system_instruction=None, temperature=0.75):
     if not api_key:
         raise ValueError("GEMINI_API_KEY is not set. Please set it in .env.")
     
-    # Try gemini-2.5-flash first, fallback to 1.5-flash
-    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    # Primary model: gemini-flash-latest / gemini-2.5-flash
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
     
     payload = {
@@ -98,9 +98,9 @@ def call_gemini(prompt, system_instruction=None, temperature=0.75):
     
     response = requests.post(url, json=payload, verify=False, timeout=30)
     
-    # Fallback to gemini-1.5-flash if 2.5-flash is not available on standard key
+    # Fallback to gemini-flash-latest / gemini-2.5-pro if needed
     if response.status_code != 200:
-        fallback_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        fallback_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
         response = requests.post(fallback_url, json=payload, verify=False, timeout=30)
         
     response.raise_for_status()

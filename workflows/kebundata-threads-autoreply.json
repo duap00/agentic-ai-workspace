@@ -1,5 +1,5 @@
 {
-  "name": "KebunData Threads - Two-Tier Auto Responder",
+  "name": "KebunData Threads - Two-Tier Auto Responder (Human-Paced)",
   "nodes": [
     {
       "parameters": {
@@ -114,18 +114,29 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst results = [];\nconst config = $('Setup Credentials & Config').first().json;\n\n// We maintain an in-memory or static cache of replied IDs\nconst staticData = $getWorkflowStaticData('global');\nstaticData.repliedIds = staticData.repliedIds || [];\n\nfor (const item of items) {\n  const replies = item.json.data || [];\n  const parentPostText = item.pairedItem && $items('Split Posts Array')[item.pairedItem.item] ? $items('Split Posts Array')[item.pairedItem.item].json.postText : '';\n  \n  for (const reply of replies) {\n    // Skip if reply is already handled or from self account\n    if (staticData.repliedIds.includes(reply.id)) continue;\n    if (reply.username && reply.username.toLowerCase().includes('kebundata')) continue;\n    \n    // Mark as seen\n    staticData.repliedIds.push(reply.id);\n    if (staticData.repliedIds.length > 500) {\n      staticData.repliedIds.shift(); // Keep cache size manageable\n    }\n    \n    results.push({\n      json: {\n        commentId: reply.id,\n        commentText: reply.text,\n        username: reply.username || 'Sahabat Kebun',\n        parentPostText: parentPostText,\n        userId: config.threadsUserId,\n        accessToken: config.threadsAccessToken\n      }\n    });\n  }\n}\n\nreturn results;"
+        "jsCode": "const items = $input.all();\nconst results = [];\nconst config = $('Setup Credentials & Config').first().json;\n\n// Maintain cache of answered comment IDs to prevent repeat replies\nconst staticData = $getWorkflowStaticData('global');\nstaticData.repliedIds = staticData.repliedIds || [];\n\nfor (const item of items) {\n  const replies = item.json.data || [];\n  const parentPostText = item.pairedItem && $items('Split Posts Array')[item.pairedItem.item] ? $items('Split Posts Array')[item.pairedItem.item].json.postText : '';\n  \n  for (const reply of replies) {\n    // Skip if already processed or authored by self\n    if (staticData.repliedIds.includes(reply.id)) continue;\n    if (reply.username && (reply.username.toLowerCase().includes('kebundata') || reply.username.toLowerCase().includes('ak.kamil'))) continue;\n    \n    // Mark as processed\n    staticData.repliedIds.push(reply.id);\n    if (staticData.repliedIds.length > 500) {\n      staticData.repliedIds.shift();\n    }\n    \n    // Anti-Bot: Random delay between 15 to 45 seconds per reply\n    const jitterSeconds = Math.floor(Math.random() * (45 - 15 + 1)) + 15;\n    \n    results.push({\n      json: {\n        commentId: reply.id,\n        commentText: reply.text,\n        username: reply.username || 'Sahabat Kebun',\n        parentPostText: parentPostText,\n        jitterSeconds: jitterSeconds,\n        userId: config.threadsUserId,\n        accessToken: config.threadsAccessToken\n      }\n    });\n    \n    // Rate pacing: Limit to max 2 replies per batch run to avoid burst spam flags\n    if (results.length >= 2) break;\n  }\n  if (results.length >= 2) break;\n}\n\nreturn results;"
       },
       "id": "kb-reply-0005",
-      "name": "Filter New Unreplied Comments",
+      "name": "Filter New Comments (Anti-Spam Paced)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [1180, 300]
     },
     {
       "parameters": {
+        "amount": "={{ $json.jitterSeconds || 20 }}",
+        "unit": "seconds"
+      },
+      "id": "kb-reply-0005-jitter",
+      "name": "Natural Human Jitter",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1400, 300]
+    },
+    {
+      "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -137,13 +148,13 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda adalah sistem balasan komen AI KebunData (Gabungan Agronomist + Community Marketer) di Meta Threads.\\n\\nPost Asal: {{$json.parentPostText}}\\nKomen Daripada @{{$json.username}}: {{$json.commentText}}\\n\\nSyarat Balasan:\\n1. Nada: Santai, mesra, membina ('member kebun'), dalam Bahasa Melayu santai / Manglish.\\n2. Nilai: Berikan fakta / solusi agronomi ringkas secara logik (1-2 ayat).\\n3. CONVERSATION EXTENDER (WAJIB): Jangan tamatkan balasan dengan noktah sahaja. Sentiasa tanya satu soalan susulan balik kepada penanya (cth: jenis media, kaedah siraman, jenis benih) supaya dia balas balik.\\n4. Panjang: 2-3 ayat maksimum.\\n\\nOutputkan teks balasan sahaja tanpa tanda petik.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 300\n  }\n}"
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda adalah Ahmad Kamil / KebunData (Gabungan Agronomist Pakar + Sahabat Kebun Mesra) di Meta Threads.\\n\\nPost Asal: {{$json.parentPostText}}\\nKomen Daripada @{{$json.username}}: {{$json.commentText}}\\n\\nSyarat Balasan (Human Voice & Anti-Bot):\\n1. NADA: Santai, jujur, mesra macam kawan borak di kebun (Bahasa Melayu santai / Manglish biasa).\\n2. DILARANG SAMA SEKALI guna gaya robotik/formal seperti 'Hai pengguna', 'Sebagai AI', atau templat berulang. Terus masuk respon bersahaja.\\n3. ILMU: Berikan 1 tip agronomi ringkas & logik yang selesaikan keraguan (1-2 ayat).\\n4. CONVERSATION EXTENDER (WAJIB): Di hujung ayat, tanya SATU soalan susulan yang mesra (cth: jenis media tanam, waktu siraman, atau jenis benih) supaya dia rasa teruja nak balas balik.\\n5. PANJANG: 2-3 ayat sahaja.\\n\\nOutputkan teks balasan sahaja tanpa tanda petik.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.85,\n    \"maxOutputTokens\": 300\n  }\n}"
       },
       "id": "kb-reply-0006",
-      "name": "Generate Reply (Gemini Two-Tier)",
+      "name": "Generate Reply (Gemini Natural Voice)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1400, 300]
+      "position": [1620, 300]
     },
     {
       "parameters": {
@@ -163,7 +174,7 @@
             },
             {
               "name": "reply_to_id",
-              "value": "={{$node[\"Filter New Unreplied Comments\"].json[\"commentId\"]}}"
+              "value": "={{$node[\"Filter New Comments (Anti-Spam Paced)\"].json[\"commentId\"]}}"
             },
             {
               "name": "access_token",
@@ -176,18 +187,18 @@
       "name": "Create Reply Container",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1620, 300]
+      "position": [1840, 300]
     },
     {
       "parameters": {
-        "amount": 3,
+        "amount": 4,
         "unit": "seconds"
       },
       "id": "kb-reply-0008",
-      "name": "Wait 3 Seconds",
+      "name": "Wait 4s for Ingestion",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [1840, 300]
+      "position": [2060, 300]
     },
     {
       "parameters": {
@@ -212,7 +223,7 @@
       "name": "Publish Reply to Threads",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2060, 300]
+      "position": [2280, 300]
     }
   ],
   "connections": {
@@ -264,25 +275,36 @@
       "main": [
         [
           {
-            "node": "Filter New Unreplied Comments",
+            "node": "Filter New Comments (Anti-Spam Paced)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Filter New Unreplied Comments": {
+    "Filter New Comments (Anti-Spam Paced)": {
       "main": [
         [
           {
-            "node": "Generate Reply (Gemini Two-Tier)",
+            "node": "Natural Human Jitter",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Generate Reply (Gemini Two-Tier)": {
+    "Natural Human Jitter": {
+      "main": [
+        [
+          {
+            "node": "Generate Reply (Gemini Natural Voice)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Reply (Gemini Natural Voice)": {
       "main": [
         [
           {
@@ -297,14 +319,14 @@
       "main": [
         [
           {
-            "node": "Wait 3 Seconds",
+            "node": "Wait 4s for Ingestion",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait 3 Seconds": {
+    "Wait 4s for Ingestion": {
       "main": [
         [
           {
