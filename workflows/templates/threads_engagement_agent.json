@@ -1,0 +1,101 @@
+{
+  "name": "Threads AI Engagement Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 150]
+    },
+    {
+      "parameters": {
+        "url": "https://graph.threads.net/v1.0/me/threads",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "options": {}
+      },
+      "name": "Fetch Latest Threads",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 150]
+    },
+    {
+      "parameters": {
+        "model": "llama3",
+        "prompt": "=You are an engaging social media manager. Write a friendly, insightful 2-sentence reply to this Threads post: {{ $json.text }}",
+        "options": {}
+      },
+      "name": "Generate AI Reply",
+      "type": "n8n-nodes-base.ollama",
+      "position": [650, 150]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.threads.net/v1.0/me/threads",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.response }}"
+            },
+            {
+              "name": "reply_to_id",
+              "value": "={{ $('Fetch Latest Threads').item.json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Post Reply to Threads",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [850, 150]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Latest Threads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Latest Threads": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Reply": {
+      "main": [
+        [
+          {
+            "node": "Post Reply to Threads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
