@@ -16,7 +16,10 @@
       "name": "Schedule Trigger (Peak Times 8am, 12pm, 8pm)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [100, 300]
+      "position": [
+        100,
+        300
+      ]
     },
     {
       "parameters": {
@@ -25,19 +28,19 @@
             {
               "id": "cfg-1",
               "name": "threadsAccessToken",
-              "value": "={{ $vars.THREADS_ACCESS_TOKEN || \"\" }}",
+              "value": "={{ $vars.THREADS_ACCESS_TOKEN || \"THAAVDvpmcxZCJBYmJ2MVdLUzNjV2pYTlBzVTY4UGNfanhwRjdwbkRpUEl0bVQ4T1RmR19rYjRsdlBmdTMwWERlbTl5eFhvbmZAVNHBTenhWZAXBuVi1HMzI5Q2tPYlF5bjlBcnkzRjJHaGVFZAlcyMlpfSnR0WUNqdFg1ZAi1iN0VQcDg3ZAwZDZD\" }}",
               "type": "string"
             },
             {
               "id": "cfg-2",
               "name": "threadsUserId",
-              "value": "={{ $vars.THREADS_USER_ID || \"\" }}",
+              "value": "={{ $vars.THREADS_USER_ID || \"28448492461400993\" }}",
               "type": "string"
             },
             {
               "id": "cfg-3",
               "name": "geminiApiKey",
-              "value": "={{ $vars.GEMINI_API_KEY || \"\" }}",
+              "value": "={{ $vars.GEMINI_API_KEY || \"YOUR_GEMINI_API_KEY_HERE\" }}",
               "type": "string"
             }
           ]
@@ -48,7 +51,10 @@
       "name": "Setup Credentials & Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [300, 300]
+      "position": [
+        300,
+        300
+      ]
     },
     {
       "parameters": {
@@ -58,7 +64,10 @@
       "name": "Select Topic & Add Human Jitter",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [520, 300]
+      "position": [
+        520,
+        300
+      ]
     },
     {
       "parameters": {
@@ -69,7 +78,10 @@
       "name": "Random Schedule Jitter",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [740, 300]
+      "position": [
+        740,
+        300
+      ]
     },
     {
       "parameters": {
@@ -86,13 +98,16 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah Ahmad Kamil / KebunData di Meta Threads. Cipta 1 post Threads santai & tular yang nampak 100% tulisan manusia sebenar (bukan bot).\\n\\nTopik: {{$json.focus}}\\nFakta Agronomi: {{$json.fact}}\\n\\nGaya Penulisan (Human Persona & Anti-Bot):\\n1. Hook (Baris 1-2): Mula dengan ayat santai yang pecah mitos atau soalan mencuit hati (cth: 'Ramai ingat siram banyak pokok makin segar, padahal...', 'Pernah tak korang perasan...').\\n2. Isi Ringkas (Baris 3-5): Terangkan sebab secara logik & praktikal dalam 2-3 ayat santai (Bahasa Melayu / Manglish santai).\\n3. Pertanyaan Terbuka (Baris Akhir): Tanya geng kebun satu soalan santai untuk kongsi pengalaman.\\n4. Hashtag: Maksimum 1-2 hashtag sahaja (#KebunData #KebunBandar).\\n5. Dilarang guna nada iklan keras, tiada ayat 'Sila layari pautan', jangan guna nada formal/robot.\\n\\nOutputkan teks post sahaja tanpa tanda petik.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.85,\n    \"maxOutputTokens\": 500\n  }\n}"
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah KebunData / Robot People di Meta Threads. Cipta 1 post Threads santai & tular yang nampak 100% tulisan manusia sebenar (bukan bot).\\n\\nTopik: {{$json.focus}}\\nFakta Agronomi: {{$json.fact}}\\n\\nGaya Penulisan (Human Persona & Anti-Bot):\\n1. Hook (Baris 1-2): Mula dengan ayat santai yang pecah mitos atau soalan mencuit hati (cth: 'Ramai ingat siram banyak pokok makin segar, padahal...', 'Pernah tak korang perasan...').\\n2. Isi Ringkas (Baris 3-5): Terangkan sebab secara logik & praktikal dalam 2-3 ayat santai (Bahasa Melayu / Manglish santai).\\n3. Pertanyaan Terbuka (Baris Akhir): Tanya geng kebun satu soalan santai untuk kongsi pengalaman.\\n4. Hashtag: Maksimum 1-2 hashtag sahaja (#KebunData #KebunBandar).\\n5. KESELAMATAN POLISI META (ANTI-BAN SHIELD):\\n   - WAJIB mematuhi Meta Community Standards & Anti-Spam Guidelines.\\n   - DILARANG: Tiada link jualan/external URL, tiada perkataan kasar/toksik/hate speech, tiada mitos ubat racun haram/berbahaya, tiada nada iklan/hard sell, tiada templat robotik.\\n\\nOutputkan teks post sahaja tanpa tanda petik.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.85,\n    \"maxOutputTokens\": 500\n  }\n}"
       },
       "id": "kb-post-0003",
       "name": "Generate Viral Post (Gemini Natural Voice)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [960, 300]
+      "position": [
+        960,
+        300
+      ]
     },
     {
       "parameters": {
@@ -102,7 +117,67 @@
       "name": "Extract Post Text",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1180, 300]
+      "position": [
+        1180,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $('Setup Credentials & Config').item.json.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah Pengaudit Keselamatan & Data Polisi Meta (Meta Community Standards & Anti-Spam Auditor).\\n\\nSila audit teks post Threads berikut untuk mengelakkan akaun di-ban atau di-shadowban oleh Meta:\\n\\\"{{ $json.postText }}\\\"\\n\\nSyarat Polisi Meta (Anti-Ban Shield):\\n1. TIADA URL / LINK: Dilarang sama sekali sebarang pautan luaran, domain, atau link jualan.\\n2. TIADA SPAM / HARD SELL: Tiada promosi jualan agresif, tiada ajakan paksa 'follow' atau 'DM'.\\n3. TIADA BAHASA TOKSIK: Tiada Hate Speech, Toksik, Makian, Buli, atau Unsur Diskriminasi.\\n4. TIADA RACUN HARAM: Tiada racun kimia berbahaya/diharamkan atau klaim mengelirukan.\\n5. NADA MANUSIA TULEN: Perbualan nampak 100% tulisan manusia tulen (bukan bot automatik).\\n\\nJika 100% LAYAK & SELAMAT dipost di Threads, balas dengan SATU perkataan sahaja: PASS\\nJika ada sebarang pelanggaran atau risiko di-ban, balas dengan SATU perkataan sahaja: FAIL\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.1,\n    \"maxOutputTokens\": 10\n  }\n}"
+      },
+      "id": "kb-post-0004-audit",
+      "name": "Audit Meta Policy (Gemini Safety Check)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-policy-1",
+              "leftValue": "={{ $json.candidates[0].content.parts[0].text.trim() }}",
+              "rightValue": "PASS",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "kb-post-0004-if",
+      "name": "Is Safe for Meta Policy?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1620,
+        300
+      ]
     },
     {
       "parameters": {
@@ -118,7 +193,7 @@
             },
             {
               "name": "text",
-              "value": "={{$json.postText}}"
+              "value": "={{ $('Extract Post Text').item.json.postText }}"
             },
             {
               "name": "access_token",
@@ -131,7 +206,10 @@
       "name": "Create Threads Container",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1400, 300]
+      "position": [
+        1840,
+        300
+      ]
     },
     {
       "parameters": {
@@ -142,7 +220,10 @@
       "name": "Wait 4s for Ingestion",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [1620, 300]
+      "position": [
+        2060,
+        300
+      ]
     },
     {
       "parameters": {
@@ -167,7 +248,10 @@
       "name": "Publish to Threads",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1840, 300]
+      "position": [
+        2280,
+        300
+      ]
     }
   ],
   "connections": {
@@ -230,11 +314,34 @@
       "main": [
         [
           {
-            "node": "Create Threads Container",
+            "node": "Audit Meta Policy (Gemini Safety Check)",
             "type": "main",
             "index": 0
           }
         ]
+      ]
+    },
+    "Audit Meta Policy (Gemini Safety Check)": {
+      "main": [
+        [
+          {
+            "node": "Is Safe for Meta Policy?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Safe for Meta Policy?": {
+      "main": [
+        [
+          {
+            "node": "Create Threads Container",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     },
     "Create Threads Container": {

@@ -1,0 +1,188 @@
+{
+  "name": "KebunData Threads - Token Exchanger & Setup Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🔑 How to Get Your Long-Term Threads API Credentials\n\n1. **Go to Meta Developers**: Open [developers.facebook.com](https://developers.facebook.com) > Apps.\n2. **Select Meta App**: App ID `1481860783589362` (`Ak.Kamil Automation`).\n3. **Add Threads Tester Role**: In **Roles** > **Roles**, add your Threads account as Tester and accept in Threads App settings.\n4. **Generate Short-Lived Token**: In **Threads API** > **Tools**, check all permissions and click **Generate Token**.\n5. **Paste Token**: Double-click the **Input Threads Credentials** node below and paste your Short-Lived Token into `short_lived_token`.\n6. **Run Workflow**: Click **Execute Workflow**.\n7. **Copy Result**: The final node will output your **Threads User ID** and **60-Day Long-Lived Access Token** formatted for `.env`!",
+        "height": 380,
+        "width": 520,
+        "color": 6
+      },
+      "id": "sticky-0001",
+      "name": "Setup Instructions Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        100,
+        100
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "kb-token-0001",
+      "name": "When Clicking Execute Workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "field-1",
+              "name": "short_lived_token",
+              "value": "PASTE_YOUR_SHORT_LIVED_TOKEN_HERE",
+              "type": "string"
+            },
+            {
+              "id": "field-2",
+              "name": "client_secret",
+              "value": "b7d09dc4b7aea667a7db8d353efe4ecb",
+              "type": "string"
+            },
+            {
+              "id": "field-3",
+              "name": "app_id",
+              "value": "1481860783589362",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "kb-token-0002",
+      "name": "Input Threads Credentials",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        320,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.threads.net/access_token",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "th_exchange_token"
+            },
+            {
+              "name": "client_secret",
+              "value": "={{ $json.client_secret }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $json.short_lived_token }}"
+            }
+          ]
+        }
+      },
+      "id": "kb-token-0003",
+      "name": "Exchange Token (Get 60-Day Token)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        540,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.threads.net/v1.0/me",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "id,username,name,threads_profile_picture_url,threads_biography"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $json.access_token }}"
+            }
+          ]
+        }
+      },
+      "id": "kb-token-0004",
+      "name": "Fetch Account Profile & ID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const me = $input.first().json;\nconst tokenData = $('Exchange Token (Get 60-Day Token)').first().json;\nconst inputData = $('Input Threads Credentials').first().json;\n\nconst longLivedToken = tokenData.access_token || '';\nconst expiresInDays = Math.round((tokenData.expires_in || 5184000) / 86400);\n\nconst envBlock = `# Meta Threads Credentials\\nTHREADS_APP_ID=${inputData.app_id}\\nTHREADS_APP_SECRET=${inputData.client_secret}\\nTHREADS_USER_ID=${me.id}\\nTHREADS_ACCESS_TOKEN=${longLivedToken}`;\n\nreturn {\n  json: {\n    status: \"SUCCESS\",\n    username: me.username,\n    account_id: me.id,\n    account_name: me.name,\n    token_type: tokenData.token_type || \"bearer\",\n    expires_in_days: `${expiresInDays} days`,\n    long_lived_access_token: longLivedToken,\n    env_formatted_copy_paste: envBlock\n  }\n};"
+      },
+      "id": "kb-token-0005",
+      "name": "Format Credentials for .env",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        520
+      ]
+    }
+  ],
+  "connections": {
+    "When Clicking Execute Workflow": {
+      "main": [
+        [
+          {
+            "node": "Input Threads Credentials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Threads Credentials": {
+      "main": [
+        [
+          {
+            "node": "Exchange Token (Get 60-Day Token)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exchange Token (Get 60-Day Token)": {
+      "main": [
+        [
+          {
+            "node": "Fetch Account Profile & ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Account Profile & ID": {
+      "main": [
+        [
+          {
+            "node": "Format Credentials for .env",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

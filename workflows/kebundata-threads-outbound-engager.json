@@ -1,5 +1,5 @@
 {
-  "name": "KebunData Threads - Outbound Niche Hunter & Auto-Engager",
+  "name": "KebunData Threads - Outbound Niche Hunter & Auto-Engager v2",
   "nodes": [
     {
       "parameters": {
@@ -12,11 +12,14 @@
           ]
         }
       },
-      "id": "kb-out-0001",
+      "id": "kb-out-v2-0001",
       "name": "Run Every 2 Hours",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [100, 300]
+      "position": [
+        100,
+        300
+      ]
     },
     {
       "parameters": {
@@ -25,40 +28,119 @@
             {
               "id": "cfg-1",
               "name": "threadsAccessToken",
-              "value": "={{ $vars.THREADS_ACCESS_TOKEN || \"\" }}",
+              "value": "={{ $vars.THREADS_ACCESS_TOKEN || \"YOUR_THREADS_ACCESS_TOKEN_HERE\" }}",
               "type": "string"
             },
             {
               "id": "cfg-2",
               "name": "threadsUserId",
-              "value": "={{ $vars.THREADS_USER_ID || \"\" }}",
+              "value": "={{ $vars.THREADS_USER_ID || \"YOUR_THREADS_USER_ID_HERE\" }}",
               "type": "string"
             },
             {
               "id": "cfg-3",
               "name": "geminiApiKey",
-              "value": "={{ $vars.GEMINI_API_KEY || \"\" }}",
+              "value": "={{ $vars.GEMINI_API_KEY || \"YOUR_GEMINI_API_KEY_HERE\" }}",
               "type": "string"
+            },
+            {
+              "id": "cfg-4",
+              "name": "telegramBotToken",
+              "value": "={{ $vars.TELEGRAM_BOT_TOKEN || \"YOUR_TELEGRAM_BOT_TOKEN_HERE\" }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-5",
+              "name": "telegramChatId",
+              "value": "={{ $vars.TELEGRAM_CHAT_ID || \"YOUR_TELEGRAM_CHAT_ID_HERE\" }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-6",
+              "name": "automationEnabled",
+              "value": "={{ $vars.ROBOT_PEOPLE_AUTOMATION_ENABLED || \"true\" }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-7",
+              "name": "dryRun",
+              "value": "={{ $vars.DRY_RUN || \"false\" }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-8",
+              "name": "scoutThreshold",
+              "value": "={{ Number($vars.SCOUT_THRESHOLD || 75) }}",
+              "type": "number"
+            },
+            {
+              "id": "cfg-9",
+              "name": "authorCooldownHours",
+              "value": "={{ Number($vars.AUTHOR_COOLDOWN_HOURS || 72) }}",
+              "type": "number"
+            },
+            {
+              "id": "cfg-10",
+              "name": "similarityThreshold",
+              "value": "={{ Number($vars.SIMILARITY_THRESHOLD || 0.80) }}",
+              "type": "number"
             }
           ]
         },
         "options": {}
       },
-      "id": "kb-out-0000",
-      "name": "Setup Credentials & Config",
+      "id": "kb-out-v2-0000",
+      "name": "Setup Configuration & Controls",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [300, 300]
+      "position": [
+        300,
+        300
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const keywords = [\n  'pokok cili',\n  'daun kuning',\n  'fertigasi',\n  'kebun bandar',\n  'baja AB',\n  'hidroponik',\n  'akar reput',\n  'serangan kutu trip',\n  'cocopeat pokok',\n  'tanaman pasu',\n  'pokok layu',\n  'sembur racun organik'\n];\n\nconst selectedKeyword = keywords[Math.floor(Math.random() * keywords.length)];\nconst config = $('Setup Credentials & Config').first().json;\n\nreturn {\n  json: {\n    keyword: selectedKeyword,\n    threadsAccessToken: config.threadsAccessToken,\n    threadsUserId: config.threadsUserId,\n    geminiApiKey: config.geminiApiKey\n  }\n};"
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-killswitch",
+              "leftValue": "={{ $json.automationEnabled }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
       },
-      "id": "kb-out-0002",
+      "id": "kb-out-v2-killswitch",
+      "name": "Automation Enabled?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const keywords = [\n  'kebun',\n  'pokok',\n  'tanam',\n  'baja',\n  'tanaman',\n  'fertigasi',\n  'hidroponik',\n  'kebun bandar',\n  'pokok cili',\n  'daun kuning'\n];\n\nconst selectedKeyword = keywords[Math.floor(Math.random() * keywords.length)];\nconst config = $('Setup Configuration & Controls').first().json;\n\nreturn {\n  json: {\n    keyword: selectedKeyword,\n    config: config\n  }\n};"
+      },
+      "id": "kb-out-v2-0002",
       "name": "Pick Random Niche Keyword",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [520, 300]
+      "position": [
+        700,
+        300
+      ]
     },
     {
       "parameters": {
@@ -81,49 +163,32 @@
             },
             {
               "name": "access_token",
-              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
+              "value": "={{ $('Setup Configuration & Controls').item.json.threadsAccessToken }}"
             }
           ]
         }
       },
-      "id": "kb-out-0003",
+      "id": "kb-out-v2-0003",
       "name": "Search Threads by Keyword",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [740, 300]
+      "position": [
+        900,
+        300
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.first().json.data || [];\nconst config = $('Setup Credentials & Config').first().json;\nconst keywordInfo = $('Pick Random Niche Keyword').first().json;\n\n// Static state for memory across runs to prevent double-commenting\nconst staticData = $getWorkflowStaticData('global');\nstaticData.engagedPostIds = staticData.engagedPostIds || [];\n\nconst candidates = [];\n\nfor (const post of items) {\n  if (!post.id || !post.text) continue;\n  if (staticData.engagedPostIds.includes(post.id)) continue;\n  \n  // Skip own posts\n  if (post.username && (post.username.toLowerCase().includes('kebundata') || post.username.toLowerCase().includes('ak.kamil'))) continue;\n  \n  // Skip very short posts\n  if (post.text.trim().length < 20) continue;\n  \n  // Human jitter delay (30 to 90 seconds)\n  const jitter = Math.floor(Math.random() * (90 - 30 + 1)) + 30;\n  \n  candidates.push({\n    json: {\n      postId: post.id,\n      postText: post.text,\n      postUsername: post.username || 'Geng Kebun',\n      matchedKeyword: keywordInfo.keyword,\n      jitterSeconds: jitter,\n      threadsAccessToken: config.threadsAccessToken,\n      threadsUserId: config.threadsUserId,\n      geminiApiKey: config.geminiApiKey\n    }\n  });\n  \n  // Pacing: Max 1 high-quality outbound reply per execution run\n  if (candidates.length >= 1) {\n    staticData.engagedPostIds.push(post.id);\n    if (staticData.engagedPostIds.length > 500) {\n      staticData.engagedPostIds.shift();\n    }\n    break;\n  }\n}\n\nreturn candidates;"
+        "jsCode": "const items = $input.first().json.data || [];\nconst config = $('Setup Configuration & Controls').first().json;\nconst keywordInfo = $('Pick Random Niche Keyword').first().json;\n\nconst staticData = $getWorkflowStaticData('global');\nstaticData.engagedPostIds = staticData.engagedPostIds || [];\nstaticData.engagedAuthors = staticData.engagedAuthors || {};\n\nconst candidates = [];\nconst nowMs = Date.now();\nconst cooldownMs = (config.authorCooldownHours || 72) * 60 * 60 * 1000;\n\n// Prohibited sensitive / anti-spam keywords\nconst prohibitedKeywords = [\n  'politik', 'PRU', 'kerajaan', 'subsidi', 'benci', 'jual', 'harta', 'kasino',\n  'pinjaman', 'scam', 'racun rumput haram', 'saham'\n];\n\nfor (const post of items) {\n  if (!post.id || !post.text) continue;\n  \n  // 1. Post ID Duplicate Check\n  if (staticData.engagedPostIds.includes(post.id)) continue;\n  \n  // 2. Own Post Check\n  const usernameLower = (post.username || '').toLowerCase();\n  if (usernameLower.includes('kebundata') || usernameLower.includes('robot.people') || usernameLower.includes('robot_people')) continue;\n  \n  // 3. Length Check\n  if (post.text.trim().length < 25) continue;\n  \n  // 4. Prohibited Keyword Check\n  const postLower = post.text.toLowerCase();\n  if (prohibitedKeywords.some(kw => postLower.includes(kw))) continue;\n  \n  // 5. Author Cooldown Check (72 Hours)\n  const lastEngaged = staticData.engagedAuthors[usernameLower];\n  if (lastEngaged && (nowMs - lastEngaged < cooldownMs)) continue;\n  \n  candidates.push({\n    json: {\n      postId: post.id,\n      postText: post.text,\n      postUsername: post.username || 'Geng Kebun',\n      matchedKeyword: keywordInfo.keyword,\n      threadsAccessToken: config.threadsAccessToken,\n      threadsUserId: config.threadsUserId,\n      geminiApiKey: config.geminiApiKey,\n      telegramBotToken: config.telegramBotToken,\n      telegramChatId: config.telegramChatId,\n      dryRun: config.dryRun,\n      scoutThreshold: config.scoutThreshold,\n      similarityThreshold: config.similarityThreshold\n    }\n  });\n  \n  // Limit to 1 candidate per schedule run for conservative pacing\n  if (candidates.length >= 1) {\n    break;\n  }\n}\n\nif (candidates.length === 0) {\n  return [{ json: { postId: \"\", postText: \"\", status: \"NO_CANDIDATE_FOUND\" } }];\n}\n\nreturn candidates;"
       },
-      "id": "kb-out-0004",
-      "name": "Select 1 Fresh Candidate Post",
+      "id": "kb-out-v2-0004",
+      "name": "Hard Exclusion Filters",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 300]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "key",
-              "value": "={{ $('Setup Credentials & Config').item.json.geminiApiKey }}"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah Ahmad Kamil / KebunData (Gabungan Agronomist Pakar + Sahabat Kebun Mesra) di Meta Threads.\\n\\nPost Pengguna Lain: \\\"{{$json.postText}}\\\" (oleh @{{$json.postUsername}})\\nKeyword Dijumpai: {{$json.matchedKeyword}}\\n\\nTugasan:\\n1. Analisa adakah post ini relevan dengan perbualan tanaman / pertanian / berkebun / masalah pokok / baja / fertigasi. Jika langsung TIDAK relevan (contoh: spam, politik, berita artis), balas dengan perkataan: SKIP\\n2. Jika RELEVAN, tulis SATU komen balasan yang sangat mesra dan bernilai tinggi:\\n   - NADA: Santai, bersahaja macam kawan kebun (Bahasa Melayu / Manglish santai).\\n   - NILAI: Berikan 1 tip agronomi logik & tepat yang selesaikan atau bantu masalah yang dibangkitkan.\\n   - DILARANG: Jangan menjual produk, jangan letak link, jangan ajak follow secara kasar, elakkan nada robotik/formal.\\n   - CONVERSATION EXTENDER: Tanya SATU soalan santai di hujung ayat supaya dia rasa seronok nak bersembang balik.\\n   - PANJANG: 2 hingga 3 ayat sahaja.\\n\\nOutputkan teks balasan sahaja (atau perkataan 'SKIP').\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.85,\n    \"maxOutputTokens\": 300\n  }\n}"
-      },
-      "id": "kb-out-0005",
-      "name": "Evaluate & Generate Helpful Reply (Gemini)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1180, 300]
+      "position": [
+        1100,
+        300
+      ]
     },
     {
       "parameters": {
@@ -135,103 +200,393 @@
           },
           "conditions": [
             {
-              "id": "cond-1",
-              "leftValue": "={{ $json.candidates[0].content.parts[0].text.trim() }}",
-              "rightValue": "SKIP",
+              "id": "cond-has-candidate",
+              "leftValue": "={{ $json.postId }}",
+              "rightValue": "",
               "operator": {
                 "type": "string",
-                "operation": "notEquals"
+                "operation": "notEmpty"
               }
             }
           ],
           "combinator": "and"
         }
       },
-      "id": "kb-out-0006",
-      "name": "Is Relevant Post?",
+      "id": "kb-out-v2-has-candidate",
+      "name": "Has Candidate Post?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1400, 300]
-    },
-    {
-      "parameters": {
-        "amount": "={{ $('Select 1 Fresh Candidate Post').item.json.jitterSeconds || 45 }}",
-        "unit": "seconds"
-      },
-      "id": "kb-out-0007",
-      "name": "Anti-Spam Human Jitter",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [1620, 200]
+      "position": [
+        1300,
+        300
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://graph.threads.net/v1.0/me/threads",
-        "sendBody": true,
-        "contentType": "form-urlencoded",
-        "bodyParameters": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
           "parameters": [
             {
-              "name": "media_type",
-              "value": "TEXT"
-            },
-            {
-              "name": "text",
-              "value": "={{ $('Evaluate & Generate Helpful Reply (Gemini)').item.json.candidates[0].content.parts[0].text.trim() }}"
-            },
-            {
-              "name": "reply_to_id",
-              "value": "={{ $('Select 1 Fresh Candidate Post').item.json.postId }}"
-            },
-            {
-              "name": "access_token",
-              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
+              "name": "key",
+              "value": "={{ $('Setup Configuration & Controls').item.json.geminiApiKey }}"
             }
           ]
-        }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah AI Scout Agent bagi Robot People Threads Automation.\\n\\nMaklumat Post Candidate:\\n- Username: @{{$json.postUsername}}\\n- Teks Post: \\\"{{$json.postText}}\\\"\\n- Keyword Dijumpai: {{$json.matchedKeyword}}\\n\\nTugasan:\\nAnalisis post ini mengikut 5 kriteria di bawah dan berikan skor 0 hingga 100 bagi setiap kriteria:\\n1. relevance_score (0-100): Adakah post ini betul-betul relevan dengan dunia berkebun/pertanian/tanaman/baja/fertigasi?\\n2. conversation_score (0-100): Adakah pengguna ini sedang mencari nasihat, bantuan, atau perbualan aktif?\\n3. value_score (0-100): Boleh tak Robot People memberikan nilai agronomi bermakna kepada pengguna ini?\\n4. risk_score (0-100): Adakah post berisiko tinggi (contoh: isu racun kimia berbahaya, politik, scam, komplain kasar)?\\n5. confidence_score (0-100): Keyakinan anda terhadap analisis ini.\\n\\nKeputusan:\\n- decision: \\\"REPLY\\\" (jika sesuai dibalas) atau \\\"NO_REPLY\\\" (jika tidak sesuai).\\n- reason: Penjelasan ringkas 1-2 ayat.\\n- recommended_reply_type: \\\"DIRECT_ADVICE\\\" | \\\"CLARIFICATION\\\" | \\\"EXPERIENCE\\\" | \\\"ENCOURAGEMENT\\\" | \\\"RESOURCE\\\"\\n\\nSila pulangkan jawapan dalam format STRICT JSON sahaja tanpa markdown atau ulasan luar:\\n{\\n  \\\"decision\\\": \\\"REPLY\\\",\\n  \\\"relevance_score\\\": 85,\\n  \\\"conversation_score\\\": 80,\\n  \\\"value_score\\\": 90,\\n  \\\"risk_score\\\": 5,\\n  \\\"confidence_score\\\": 85,\\n  \\\"reason\\\": \\\"Pengguna bertanya tentang masalah daun kuning pokok cili.\\\",\\n  \\\"recommended_reply_type\\\": \\\"DIRECT_ADVICE\\\"\\n}\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.2,\n    \"maxOutputTokens\": 300\n  }\n}"
       },
-      "id": "kb-out-0008",
-      "name": "Create Reply Container",
+      "id": "kb-out-v2-scout",
+      "name": "AI Scout Agent (Gemini)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1840, 200]
+      "position": [
+        1500,
+        200
+      ]
     },
     {
       "parameters": {
-        "amount": 4,
-        "unit": "seconds"
+        "jsCode": "const candidate = $('Hard Exclusion Filters').first().json;\nconst rawText = $input.first().json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{}';\nlet scoutResult = {};\n\ntry {\n  const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();\n  scoutResult = JSON.parse(cleanJson);\n} catch (e) {\n  scoutResult = {\n    decision: 'NO_REPLY',\n    relevance_score: 0,\n    conversation_score: 0,\n    value_score: 0,\n    risk_score: 100,\n    confidence_score: 0,\n    reason: 'Failed to parse Scout JSON output'\n  };\n}\n\nconst relevance = scoutResult.relevance_score || 0;\nconst conversation = scoutResult.conversation_score || 0;\nconst value = scoutResult.value_score || 0;\nconst confidence = scoutResult.confidence_score || 0;\nconst risk = scoutResult.risk_score || 0;\n\n// Deterministic Score Calculation:\n// base_score = (relevance * 0.30) + (conversation * 0.25) + (value * 0.25) + (confidence * 0.20)\nconst baseScore = (relevance * 0.30) + (conversation * 0.25) + (value * 0.25) + (confidence * 0.20);\nconst riskPenalty = risk * 0.50;\nconst finalScore = Math.max(0, Math.round(baseScore - riskPenalty));\n\nconst threshold = candidate.scoutThreshold || 75;\nconst qualified = (scoutResult.decision === 'REPLY') && (finalScore >= threshold) && (risk <= 20);\n\nreturn [{\n  json: {\n    ...candidate,\n    scoutDecision: scoutResult.decision || 'NO_REPLY',\n    relevanceScore: relevance,\n    conversationScore: conversation,\n    valueScore: value,\n    riskScore: risk,\n    confidenceScore: confidence,\n    finalScore: finalScore,\n    scoutReason: scoutResult.reason || '',\n    recommendedReplyType: scoutResult.recommended_reply_type || 'DIRECT_ADVICE',\n    qualified: qualified\n  }\n}];"
       },
-      "id": "kb-out-0009",
-      "name": "Wait 4s for Ingestion",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [2060, 200]
+      "id": "kb-out-v2-scoring",
+      "name": "Deterministic Opportunity Scoring",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-qualified",
+              "leftValue": "={{ $json.qualified }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "kb-out-v2-is-qualified",
+      "name": "Is Qualified Opportunity?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        200
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://graph.threads.net/v1.0/me/threads_publish",
-        "sendBody": true,
-        "contentType": "form-urlencoded",
-        "bodyParameters": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
           "parameters": [
             {
-              "name": "creation_id",
-              "value": "={{ $node[\"Create Reply Container\"].json[\"id\"] }}"
-            },
-            {
-              "name": "access_token",
-              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
+              "name": "key",
+              "value": "={{ $('Setup Configuration & Controls').item.json.geminiApiKey }}"
             }
           ]
-        }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah Reply Strategist Agent bagi Robot People Threads Engine.\\n\\nPost Pengguna: \\\"{{$json.postText}}\\\" (oleh @{{$json.postUsername}})\\nJenis Reply Cadangan: {{$json.recommendedReplyType}}\\n\\nTugasan:\\nTulis draft balasan outbound Threads yang tulen, mesra, dan berfaedah mengikut garis panduan berikut:\\n1. NADA: Robot People Voice — mesra, berkemahiran, bersahaja (Bahasa Melayu / Manglish santai).\\n2. BERFAEDAH: Berikan 1 tip agronomi tepat yang membantu masalah pengguna.\\n3. KESELAMATAN PERTANIAN: DILARANG memberi nasihat racun kimia/pesticide berisiko atau campuran racun berbahaya. Jika berisiko, set decision: \\\"NO_REPLY\\\".\\n4. DILARANG: Tiada link, tiada promosi jualan, tiada paksaan follow.\\n5. STRUKTUR: Jangan paksa formula 'tip + soalan'. Hanya masukkan soalan jika ia betul-betul relevan dan natural.\\n\\nPulangkan STRICT JSON sahaja:\\n{\\n  \\\"decision\\\": \\\"REPLY\\\",\\n  \\\"reply_type\\\": \\\"{{$json.recommendedReplyType}}\\\",\\n  \\\"draft\\\": \\\"Draft balasan anda di sini...\\\",\\n  \\\"reason\\\": \\\"Draf agronomi selamat dan relevan.\\\"\\n}\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 350\n  }\n}"
       },
-      "id": "kb-out-0010",
-      "name": "Publish Outbound Reply",
+      "id": "kb-out-v2-strategist",
+      "name": "Reply Strategist Agent (Gemini)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2280, 200]
+      "position": [
+        2100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $('Setup Configuration & Controls').item.json.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah Pengaudit Outbound Safety & Quality Review Gate bagi Robot People.\\n\\nDraft Balasan:\\n\\\"{{ $json.draft }}\\\"\\n\\nSyarat Auditan:\\n1. Adakah draf mesra, bernilai agronomi, dan 100% nampak seperti tulisan manusia?\\n2. Adakah ia bebas daripada spam, hard sell, link jualan, dan ajakan kasar?\\n3. Adakah ia selamat daripada klaim racun berbahaya atau petua merosakkan tanaman?\\n\\nPulangkan STRICT JSON sahaja:\\n{\\n  \\\"decision\\\": \\\"APPROVE_FOR_HUMAN_REVIEW\\\",\\n  \\\"quality_score\\\": 90,\\n  \\\"risk_score\\\": 0,\\n  \\\"reasons\\\": [\\\"Draf selamat dan berkualiti tinggi\\\"]\\n}\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.1,\n    \"maxOutputTokens\": 150\n  }\n}"
+      },
+      "id": "kb-out-v2-safety-gate",
+      "name": "Outbound Safety & Quality Review",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Deterministic Opportunity Scoring').first().json;\nconst stratRaw = $('Reply Strategist Agent (Gemini)').first().json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{}';\nconst gateRaw = $input.first().json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '{}';\n\nlet strat = {};\nlet gate = {};\n\ntry {\n  strat = JSON.parse(stratRaw.replace(/```json/g, '').replace(/```/g, '').trim());\n} catch (e) {}\n\ntry {\n  gate = JSON.parse(gateRaw.replace(/```json/g, '').replace(/```/g, '').trim());\n} catch (e) {}\n\nconst draftText = strat.draft || '';\nconst staticData = $getWorkflowStaticData('global');\nstaticData.recentDrafts = staticData.recentDrafts || [];\n\n// Simple String Similarity Check (Dice Coefficient / Levenshtein N-gram)\nfunction getSimilarity(s1, s2) {\n  if (!s1 || !s2) return 0;\n  const pairs1 = getBigrams(s1.toLowerCase());\n  const pairs2 = getBigrams(s2.toLowerCase());\n  let union = pairs1.length + pairs2.length;\n  let hit = 0;\n  for (const p1 of pairs1) {\n    for (let i = 0; i < pairs2.length; i++) {\n      if (p1 === pairs2[i]) {\n        hit++;\n        pairs2.splice(i, 1);\n        break;\n      }\n    }\n  }\n  return (2.0 * hit) / union;\n}\n\nfunction getBigrams(str) {\n  const bigrams = [];\n  for (let i = 0; i < str.length - 1; i++) {\n    bigrams.push(str.substring(i, i + 2));\n  }\n  return bigrams;\n}\n\nlet isDuplicate = false;\nconst threshold = prev.similarityThreshold || 0.80;\nfor (const pastDraft of staticData.recentDrafts) {\n  if (getSimilarity(draftText, pastDraft) > threshold) {\n    isDuplicate = true;\n    break;\n  }\n}\n\nif (!isDuplicate && draftText) {\n  staticData.recentDrafts.push(draftText);\n  if (staticData.recentDrafts.length > 50) staticData.recentDrafts.shift();\n}\n\nconst safetyApproved = gate.decision === 'APPROVE_FOR_HUMAN_REVIEW' && strat.decision === 'REPLY' && !isDuplicate;\n\nreturn [{\n  json: {\n    ...prev,\n    replyType: strat.reply_type || prev.recommendedReplyType,\n    draftReply: draftText,\n    safetyDecision: gate.decision || 'REJECT',\n    qualityScore: gate.quality_score || 0,\n    isDuplicate: isDuplicate,\n    safetyApproved: safetyApproved\n  }\n}];"
+      },
+      "id": "kb-out-v2-duplicate-check",
+      "name": "Duplicate & Similarity Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2500,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-safety",
+              "leftValue": "={{ $json.safetyApproved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "kb-out-v2-is-safe",
+      "name": "Passed Safety & Similarity?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2700,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-dryrun",
+              "leftValue": "={{ String($json.dryRun) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "kb-out-v2-check-dryrun",
+      "name": "Check Dry Run Mode",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2900,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $json.telegramBotToken }}/sendMessage",
+        "sendQuery": false,
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $json.telegramChatId }}\",\n  \"parse_mode\": \"HTML\",\n  \"text\": \"🌱 <b>Robot People Threads Engagement Draft</b>\\n\\n👤 <b>User</b>: @{{ $json.postUsername }}\\n💬 <b>Post</b>: <i>\\\"{{ $json.postText }}\\\"</i>\\n\\n📊 <b>Scout Score</b>: {{ $json.finalScore }}/100 (Relevance: {{ $json.relevanceScore }}, Risk: {{ $json.riskScore }})\\n🏷️ <b>Reply Type</b>: {{ $json.replyType }}\\n\\n📝 <b>Draft Reply</b>:\\n<i>\\\"{{ $json.draftReply }}\\\"</i>\\n\\n<i>Sila buat semakan. Draf ini memerlukan kelulusan sebelum dipost ke Meta Threads.</i>\",\n  \"reply_markup\": {\n    \"inline_keyboard\": [\n      [\n        {\n          \"text\": \"✅ Approve & Publish\",\n          \"callback_data\": \"approve_{{ $json.postId }}\"\n        },\n        {\n          \"text\": \"❌ Reject\",\n          \"callback_data\": \"reject_{{ $json.postId }}\"\n        }\n      ]\n    ]\n  }\n}"
+      },
+      "id": "kb-out-v2-telegram",
+      "name": "Send Telegram Approval Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "threads_outbound_logs",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "execution_id": "={{ $execution.id }}",
+            "post_id": "={{ $json.postId }}",
+            "author_id": "={{ $json.postUsername }}",
+            "username": "={{ $json.postUsername }}",
+            "original_post": "={{ $json.postText }}",
+            "matched_topic": "={{ $json.matchedKeyword }}",
+            "scout_decision": "={{ $json.scoutDecision }}",
+            "relevance_score": "={{ $json.relevanceScore }}",
+            "conversation_score": "={{ $json.conversationScore }}",
+            "value_score": "={{ $json.valueScore }}",
+            "risk_score": "={{ $json.riskScore }}",
+            "final_score": "={{ $json.finalScore }}",
+            "reply_type": "={{ $json.replyType }}",
+            "draft_reply": "={{ $json.draftReply }}",
+            "approval_status": "PENDING_HUMAN_APPROVAL",
+            "publish_status": "UNPUBLISHED"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "kb-out-v2-pg-pending",
+      "name": "Log Pending Approval to Postgres",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        3300,
+        100
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cqm7Rl4AyTXDGIR4",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "threads_outbound_logs",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "execution_id": "={{ $execution.id }}",
+            "post_id": "={{ $json.postId || '' }}",
+            "author_id": "={{ $json.postUsername || '' }}",
+            "username": "={{ $json.postUsername || '' }}",
+            "original_post": "={{ $json.postText || '' }}",
+            "matched_topic": "={{ $json.matchedKeyword || '' }}",
+            "scout_decision": "={{ $json.scoutDecision || 'NO_REPLY' }}",
+            "relevance_score": "={{ $json.relevanceScore || 0 }}",
+            "risk_score": "={{ $json.riskScore || 0 }}",
+            "final_score": "={{ $json.finalScore || 0 }}",
+            "approval_status": "SKIPPED",
+            "publish_status": "SKIPPED"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "kb-out-v2-pg-skipped",
+      "name": "Log Skipped to Postgres",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        2100,
+        450
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cqm7Rl4AyTXDGIR4",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "threads_outbound_logs",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "execution_id": "={{ $execution.id }}",
+            "post_id": "={{ $json.postId }}",
+            "author_id": "={{ $json.postUsername }}",
+            "username": "={{ $json.postUsername }}",
+            "original_post": "={{ $json.postText }}",
+            "matched_topic": "={{ $json.matchedKeyword }}",
+            "scout_decision": "={{ $json.scoutDecision }}",
+            "relevance_score": "={{ $json.relevanceScore }}",
+            "final_score": "={{ $json.finalScore }}",
+            "reply_type": "={{ $json.replyType }}",
+            "draft_reply": "={{ $json.draftReply }}",
+            "approval_status": "DRY_RUN_COMPLETED",
+            "publish_status": "DRY_RUN_SKIPPED"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "kb-out-v2-pg-dryrun",
+      "name": "Log Dry Run to Postgres",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        3100,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cqm7Rl4AyTXDGIR4",
+          "name": "Postgres account"
+        }
+      }
     }
   ],
   "connections": {
@@ -239,14 +594,25 @@
       "main": [
         [
           {
-            "node": "Setup Credentials & Config",
+            "node": "Setup Configuration & Controls",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Setup Credentials & Config": {
+    "Setup Configuration & Controls": {
+      "main": [
+        [
+          {
+            "node": "Automation Enabled?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Automation Enabled?": {
       "main": [
         [
           {
@@ -254,7 +620,8 @@
             "type": "main",
             "index": 0
           }
-        ]
+        ],
+        []
       ]
     },
     "Pick Random Niche Keyword": {
@@ -272,74 +639,156 @@
       "main": [
         [
           {
-            "node": "Select 1 Fresh Candidate Post",
+            "node": "Hard Exclusion Filters",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Select 1 Fresh Candidate Post": {
+    "Hard Exclusion Filters": {
       "main": [
         [
           {
-            "node": "Evaluate & Generate Helpful Reply (Gemini)",
+            "node": "Has Candidate Post?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Evaluate & Generate Helpful Reply (Gemini)": {
+    "Has Candidate Post?": {
       "main": [
         [
           {
-            "node": "Is Relevant Post?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Is Relevant Post?": {
-      "main": [
-        [
-          {
-            "node": "Anti-Spam Human Jitter",
+            "node": "AI Scout Agent (Gemini)",
             "type": "main",
             "index": 0
           }
         ],
-        []
-      ]
-    },
-    "Anti-Spam Human Jitter": {
-      "main": [
         [
           {
-            "node": "Create Reply Container",
+            "node": "Log Skipped to Postgres",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Create Reply Container": {
+    "AI Scout Agent (Gemini)": {
       "main": [
         [
           {
-            "node": "Wait 4s for Ingestion",
+            "node": "Deterministic Opportunity Scoring",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait 4s for Ingestion": {
+    "Deterministic Opportunity Scoring": {
       "main": [
         [
           {
-            "node": "Publish Outbound Reply",
+            "node": "Is Qualified Opportunity?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Qualified Opportunity?": {
+      "main": [
+        [
+          {
+            "node": "Reply Strategist Agent (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Skipped to Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply Strategist Agent (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Outbound Safety & Quality Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outbound Safety & Quality Review": {
+      "main": [
+        [
+          {
+            "node": "Duplicate & Similarity Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate & Similarity Check": {
+      "main": [
+        [
+          {
+            "node": "Passed Safety & Similarity?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Passed Safety & Similarity?": {
+      "main": [
+        [
+          {
+            "node": "Check Dry Run Mode",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Skipped to Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Dry Run Mode": {
+      "main": [
+        [
+          {
+            "node": "Log Dry Run to Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Telegram Approval Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Approval Request": {
+      "main": [
+        [
+          {
+            "node": "Log Pending Approval to Postgres",
             "type": "main",
             "index": 0
           }

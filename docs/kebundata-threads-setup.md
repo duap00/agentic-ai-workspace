@@ -27,17 +27,16 @@ Meta telah melancarkan **Official Threads API (Graph API v1.0)**. Ikuti langkah 
 ### Langkah 2.1: Cipta App di Meta for Developers
 1. Pergi ke portal [Meta for Developers](https://developers.facebook.com/) dan log masuk dengan akaun Facebook/Instagram anda.
 2. Klik **My Apps** > **Create App**.
-3. Pilih use case **Other** > pilih jenis **Business** (atau **Threads API** jika tersedia terus).
-4. Berikan nama App (cth: `KebunData-Growth-Engine`).
+4. Nama App: `Ak.Kamil Automation` (`App ID: 2229806474461275`, Business: `Robot People Industries` - `107558840944600`).
 
 ### Langkah 2.2: Tambah Produk Threads API
-1. Dalam Dashboard App anda, cari produk **Threads** dan klik **Set Up**.
+1. Dalam Dashboard App anda (`Ak.Kamil Automation`), cari produk **Threads** dan klik **Set Up**.
 2. Di bawah menu **Roles** > **Roles**, tambah akaun Instagram/Threads KebunData anda sebagai **Tester** atau **Developer**.
 3. Log masuk ke akaun Threads KebunData anda dan terima jemputan Tester di bahagian *Settings > Security / Developer permissions*.
 
 ### Langkah 2.3: Jana User Access Token & Dapatkan User ID
 1. Pergi ke **Threads API > Tools** (atau Graph API Explorer).
-2. Pilih App anda (`App ID: 2229806474461275`, `Business ID: 107558840944600`) dan tandakan kebenaran (*Permissions*) yang diperlukan (Semua 11 Permissions):
+2. Pilih App anda (`Ak.Kamil Automation` | `App ID: 2229806474461275`, Business: `Robot People Industries` | `Business ID: 107558840944600`) dan tandakan kebenaran (*Permissions*) yang diperlukan (Semua 11 Permissions):
    - `threads_basic` — Membaca profil dan post pengguna sendiri
    - `threads_content_publish` — Mencipta dan menerbitkan post/media
    - `threads_delete` — Memadamkan post
@@ -116,10 +115,11 @@ python skills/outbound_threads_engager.py --publish
 
 1. Buka antaramuka **n8n Web Interface** anda di OCI server.
 2. Pergi ke **Workflows** > klik **Add Workflow** > menu tiga titik (top right) > **Import from File**.
-3. Terdapat 3 blueprint yang telah disediakan dalam folder `workflows/`:
+3. Terdapat 4 blueprint yang telah disediakan dalam folder `workflows/`:
    - `workflows/kebundata-threads-autopost.json` (Penjadualan Post Automatik).
    - `workflows/kebundata-threads-autoreply.json` (Pendengar & Penjawab Komen Inbound Automatik).
    - `workflows/kebundata-threads-outbound-engager.json` (Pemburu Topik Niche & Penjawab Komuniti Outbound).
+   - `workflows/kebundata-threads-content-factory.json` (Pencipta & Penerbit Content Factory Automatik menerusi Webhook/API).
 4. Pastikan pembolehubah `THREADS_USER_ID`, `THREADS_ACCESS_TOKEN`, dan `GEMINI_API_KEY` telah dimasukkan ke dalam n8n Environment Variables atau disesuaikan pada node HTTP Request.
 5. Tukarkan status workflow kepada **Active: True**.
 
@@ -130,3 +130,17 @@ python skills/outbound_threads_engager.py --publish
 - **Kepantasan Balas (Response Speed):** Balasan yang diberikan dalam masa 15-30 minit pertama selepas komen ditulis mendapat lonjakan keutamaan algoritma Meta.
 - **Kedalaman Perbualan (Depth over Volume):** 1 post dengan 10 komen bersarang (*nested conversation*) adalah 5x lebih bernilai daripada 10 post tanpa sebarang komen.
 - **Kualiti Nada:** Kekal santai ("Tuan", "Geng kebun", "Korang"), jangan nampak seperti bot automatik generik.
+
+---
+
+## 🛡️ 7. Perisai Polisi Meta & Audit Anti-Ban (AI Policy Guard)
+
+Semua blueprint workflow kini dilengkapi dengan **Audit Keselamatan Polisi Meta automatik (Gemini Safety Check)** sebelum sebarang post atau komen diterbitkan:
+
+1. **Audit Polisi Meta (Gemini Safety Check Node)**:
+   - Setiap teks yang dijana akan melalui audit khusus bagi memastikan tiada unsur **Spam, Hard Sell, Hate Speech, Pautan Jualan Berulang, atau Cadangan Racun Kimia Berbahaya**.
+   - Jika melepasi 100% kriteria keselamatan Meta, node audit mengembalikan status `PASS` dan diterbitkan.
+   - Jika terdapat sebarang risiko atau pelanggaran, status `FAIL` dihasilkan dan siaran akan **dibatalkan secara automatik (ABORT)** untuk melindungi akaun daripada *shadowban* atau penggantungan (*ban*).
+2. **Anti-Spam Human Jitter**:
+   - Menikmati kelewatan masa rawak (15 hingga 120 saat) bagi meniru tabiat manusia sebenar.
+

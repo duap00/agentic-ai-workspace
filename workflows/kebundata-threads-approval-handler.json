@@ -1,0 +1,438 @@
+{
+  "name": "KebunData Threads - Human Approval & Publisher Webhook v2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "threads-approval",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "appr-0001",
+      "name": "Telegram Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        100,
+        300
+      ],
+      "webhookId": "threads-approval"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst callbackQuery = body.callback_query;\n\nif (!callbackQuery) {\n  return [{ json: { valid: false } }];\n}\n\nconst data = callbackQuery.data || ''; // e.g. 'approve_test_1001' or 'reject_test_1001'\nconst parts = data.split('_');\nconst action = parts[0]; // 'approve' or 'reject'\nconst postId = parts.slice(1).join('_');\n\nconst config = {\n  threadsAccessToken: $vars.THREADS_ACCESS_TOKEN || \"YOUR_THREADS_ACCESS_TOKEN_HERE\",\n  threadsUserId: $vars.THREADS_USER_ID || \"YOUR_THREADS_USER_ID_HERE\",\n  telegramBotToken: $vars.TELEGRAM_BOT_TOKEN || \"YOUR_TELEGRAM_BOT_TOKEN_HERE\",\n  telegramChatId: $vars.TELEGRAM_CHAT_ID || \"YOUR_TELEGRAM_CHAT_ID_HERE\"\n};\n\nreturn [{\n  json: {\n    valid: true,\n    action: action,\n    postId: postId,\n    callbackQueryId: callbackQuery.id,\n    chatId: callbackQuery.message?.chat?.id || config.telegramChatId,\n    messageId: callbackQuery.message?.message_id,\n    config: config\n  }\n}];"
+      },
+      "id": "appr-0002",
+      "name": "Parse Telegram Callback Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $json.config.telegramBotToken }}/answerCallbackQuery",
+        "sendQuery": false,
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"callback_query_id\": \"{{ $json.callbackQueryId }}\",\n  \"text\": \"{{ $json.action === 'approve' ? '✅ Kelulusan diterima! Memproses balasan Threads...' : '❌ Keputusan ditolak.' }}\",\n  \"show_alert\": false\n}"
+      },
+      "id": "appr-0002-ack",
+      "name": "Answer Telegram Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-valid",
+              "leftValue": "={{ $('Parse Telegram Callback Data').first().json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "appr-0003",
+      "name": "Is Valid Callback?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT * FROM threads_outbound_logs WHERE post_id = '{{ $('Parse Telegram Callback Data').first().json.postId }}' ORDER BY id DESC LIMIT 1;",
+        "options": {
+          "alwaysOutputData": true
+        }
+      },
+      "id": "appr-0004",
+      "name": "Fetch Log from Postgres",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cqm7Rl4AyTXDGIR4",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cb = $('Parse Telegram Callback Data').first().json;\nconst logItem = $input.first()?.json || {};\nconst hasLog = Boolean(logItem.post_id);\n\nconst draftText = hasLog ? logItem.draft_reply : 'Daun kuning selalunya tanda lebihan air atau kurang nitrogen. Boleh cuba kurangkan siraman dan tambah sikit baja N.';\nconst username = hasLog ? logItem.username : 'petani_moden_test';\nconst postId = hasLog ? logItem.post_id : cb.postId;\n\nreturn [{\n  json: {\n    ...cb,\n    post_id: postId,\n    username: username,\n    draft_reply: draftText,\n    matched_topic: logItem.matched_topic || 'kebun',\n    hasLog: hasLog\n  }\n}];"
+      },
+      "id": "appr-0004-merge",
+      "name": "Merge Log & Fallback Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-action-approve",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "appr-0005",
+      "name": "Is Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.threads.net/v1.0/{{ $json.config.threadsUserId }}/threads",
+        "sendQuery": false,
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"media_type\": \"TEXT\",\n  \"text\": \"{{ $json.draft_reply }}\",\n  \"reply_to_id\": \"{{ $json.post_id }}\",\n  \"access_token\": \"{{ $json.config.threadsAccessToken }}\"\n}"
+      },
+      "id": "appr-0006",
+      "name": "Create Threads Reply Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1500,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 4,
+        "unit": "seconds"
+      },
+      "id": "appr-0007",
+      "name": "Wait 4s Ingestion",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1700,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.threads.net/v1.0/{{ $json.config.threadsUserId }}/threads_publish",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Merge Log & Fallback Data').first().json.config.threadsAccessToken }}"
+            }
+          ]
+        }
+      },
+      "id": "appr-0008",
+      "name": "Publish to Threads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE threads_outbound_logs SET approval_status = 'APPROVED_BY_HUMAN', publish_status = 'PUBLISHED', threads_reply_id = '{{ $json.id }}' WHERE post_id = '{{ $('Merge Log & Fallback Data').first().json.post_id }}';\n\nINSERT INTO threads_authors (author_id, username, last_engaged_at, engagement_count, last_topic)\nVALUES (\n  '{{ $('Merge Log & Fallback Data').first().json.username }}',\n  '{{ $('Merge Log & Fallback Data').first().json.username }}',\n  CURRENT_TIMESTAMP,\n  1,\n  '{{ $('Merge Log & Fallback Data').first().json.matched_topic }}'\n)\nON CONFLICT (author_id) DO UPDATE SET\n  last_engaged_at = CURRENT_TIMESTAMP,\n  engagement_count = threads_authors.engagement_count + 1,\n  last_topic = EXCLUDED.last_topic;",
+        "options": {
+          "alwaysOutputData": true
+        }
+      },
+      "id": "appr-0009",
+      "name": "Update Postgres Approved",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        2100,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cqm7Rl4AyTXDGIR4",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $('Merge Log & Fallback Data').first().json.config.telegramBotToken }}/sendMessage",
+        "sendQuery": false,
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $('Merge Log & Fallback Data').first().json.chatId }}\",\n  \"text\": \"✅ <b>Berjaya Dipublish!</b>\\nKomen balasan telah dipublish ke Meta Threads untuk @{{ $('Merge Log & Fallback Data').first().json.username }}.\\nThreads Reply ID: {{ $('Publish to Threads').first()?.json?.id || 'TEST_PUBLISHED' }}\",\n  \"parse_mode\": \"HTML\"\n}"
+      },
+      "id": "appr-0010",
+      "name": "Notify Telegram Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE threads_outbound_logs SET approval_status = 'REJECTED_BY_HUMAN', publish_status = 'REJECTED' WHERE post_id = '{{ $('Merge Log & Fallback Data').first().json.post_id }}';",
+        "options": {
+          "alwaysOutputData": true
+        }
+      },
+      "id": "appr-0011",
+      "name": "Update Postgres Rejected",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1500,
+        450
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "cqm7Rl4AyTXDGIR4",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $('Merge Log & Fallback Data').first().json.config.telegramBotToken }}/sendMessage",
+        "sendQuery": false,
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $('Merge Log & Fallback Data').first().json.chatId }}\",\n  \"text\": \"❌ <b>Draf Ditolak.</b>\\nBalasan outbound untuk @{{ $('Merge Log & Fallback Data').first().json.username }} telah ditolak dan direkodkan ke Postgres.\",\n  \"parse_mode\": \"HTML\"\n}"
+      },
+      "id": "appr-0012",
+      "name": "Notify Telegram Rejection",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1700,
+        450
+      ]
+    }
+  ],
+  "connections": {
+    "Telegram Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Telegram Callback Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Telegram Callback Data": {
+      "main": [
+        [
+          {
+            "node": "Answer Telegram Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Telegram Callback": {
+      "main": [
+        [
+          {
+            "node": "Is Valid Callback?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Valid Callback?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Log from Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Fetch Log from Postgres": {
+      "main": [
+        [
+          {
+            "node": "Merge Log & Fallback Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Log & Fallback Data": {
+      "main": [
+        [
+          {
+            "node": "Is Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Approved?": {
+      "main": [
+        [
+          {
+            "node": "Create Threads Reply Container",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Postgres Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Threads Reply Container": {
+      "main": [
+        [
+          {
+            "node": "Wait 4s Ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 4s Ingestion": {
+      "main": [
+        [
+          {
+            "node": "Publish to Threads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish to Threads": {
+      "main": [
+        [
+          {
+            "node": "Update Postgres Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Postgres Approved": {
+      "main": [
+        [
+          {
+            "node": "Notify Telegram Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Postgres Rejected": {
+      "main": [
+        [
+          {
+            "node": "Notify Telegram Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

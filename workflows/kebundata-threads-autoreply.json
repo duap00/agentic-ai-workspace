@@ -16,7 +16,10 @@
       "name": "Poll Every 10 Minutes",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [100, 300]
+      "position": [
+        100,
+        300
+      ]
     },
     {
       "parameters": {
@@ -25,19 +28,19 @@
             {
               "id": "cfg-1",
               "name": "threadsAccessToken",
-              "value": "={{ $vars.THREADS_ACCESS_TOKEN || \"\" }}",
+              "value": "={{ $vars.THREADS_ACCESS_TOKEN || \"THAAVDvpmcxZCJBYmJ2MVdLUzNjV2pYTlBzVTY4UGNfanhwRjdwbkRpUEl0bVQ4T1RmR19rYjRsdlBmdTMwWERlbTl5eFhvbmZAVNHBTenhWZAXBuVi1HMzI5Q2tPYlF5bjlBcnkzRjJHaGVFZAlcyMlpfSnR0WUNqdFg1ZAi1iN0VQcDg3ZAwZDZD\" }}",
               "type": "string"
             },
             {
               "id": "cfg-2",
               "name": "threadsUserId",
-              "value": "={{ $vars.THREADS_USER_ID || \"\" }}",
+              "value": "={{ $vars.THREADS_USER_ID || \"28448492461400993\" }}",
               "type": "string"
             },
             {
               "id": "cfg-3",
               "name": "geminiApiKey",
-              "value": "={{ $vars.GEMINI_API_KEY || \"\" }}",
+              "value": "={{ $vars.GEMINI_API_KEY || \"YOUR_GEMINI_API_KEY_HERE\" }}",
               "type": "string"
             }
           ]
@@ -48,7 +51,10 @@
       "name": "Setup Credentials & Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [300, 300]
+      "position": [
+        300,
+        300
+      ]
     },
     {
       "parameters": {
@@ -76,7 +82,10 @@
       "name": "Fetch Recent Posts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [520, 300]
+      "position": [
+        520,
+        300
+      ]
     },
     {
       "parameters": {
@@ -86,7 +95,10 @@
       "name": "Split Posts Array",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [740, 300]
+      "position": [
+        740,
+        300
+      ]
     },
     {
       "parameters": {
@@ -110,17 +122,23 @@
       "name": "Fetch Post Replies",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [960, 300]
+      "position": [
+        960,
+        300
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst results = [];\nconst config = $('Setup Credentials & Config').first().json;\n\n// Maintain cache of answered comment IDs to prevent repeat replies\nconst staticData = $getWorkflowStaticData('global');\nstaticData.repliedIds = staticData.repliedIds || [];\n\nfor (const item of items) {\n  const replies = item.json.data || [];\n  const parentPostText = item.pairedItem && $items('Split Posts Array')[item.pairedItem.item] ? $items('Split Posts Array')[item.pairedItem.item].json.postText : '';\n  \n  for (const reply of replies) {\n    // Skip if already processed or authored by self\n    if (staticData.repliedIds.includes(reply.id)) continue;\n    if (reply.username && (reply.username.toLowerCase().includes('kebundata') || reply.username.toLowerCase().includes('ak.kamil'))) continue;\n    \n    // Mark as processed\n    staticData.repliedIds.push(reply.id);\n    if (staticData.repliedIds.length > 500) {\n      staticData.repliedIds.shift();\n    }\n    \n    // Anti-Bot: Random delay between 15 to 45 seconds per reply\n    const jitterSeconds = Math.floor(Math.random() * (45 - 15 + 1)) + 15;\n    \n    results.push({\n      json: {\n        commentId: reply.id,\n        commentText: reply.text,\n        username: reply.username || 'Sahabat Kebun',\n        parentPostText: parentPostText,\n        jitterSeconds: jitterSeconds,\n        userId: config.threadsUserId,\n        accessToken: config.threadsAccessToken\n      }\n    });\n    \n    // Rate pacing: Limit to max 2 replies per batch run to avoid burst spam flags\n    if (results.length >= 2) break;\n  }\n  if (results.length >= 2) break;\n}\n\nreturn results;"
+        "jsCode": "const items = $input.all();\nconst results = [];\nconst config = $('Setup Credentials & Config').first().json;\n\n// Maintain cache of answered comment IDs to prevent repeat replies\nconst staticData = $getWorkflowStaticData('global');\nstaticData.repliedIds = staticData.repliedIds || [];\n\nfor (const item of items) {\n  const replies = item.json.data || [];\n  const parentPostText = item.pairedItem && $items('Split Posts Array')[item.pairedItem.item] ? $items('Split Posts Array')[item.pairedItem.item].json.postText : '';\n  \n  for (const reply of replies) {\n    // Skip if already processed or authored by self\n    if (staticData.repliedIds.includes(reply.id)) continue;\n    if (reply.username && (reply.username.toLowerCase().includes('kebundata') || reply.username.toLowerCase().includes('robot.people') || reply.username.toLowerCase().includes('robot_people'))) continue;\n    \n    // Mark as processed\n    staticData.repliedIds.push(reply.id);\n    if (staticData.repliedIds.length > 500) {\n      staticData.repliedIds.shift();\n    }\n    \n    // Anti-Bot: Random delay between 15 to 45 seconds per reply\n    const jitterSeconds = Math.floor(Math.random() * (45 - 15 + 1)) + 15;\n    \n    results.push({\n      json: {\n        commentId: reply.id,\n        commentText: reply.text,\n        username: reply.username || 'Sahabat Kebun',\n        parentPostText: parentPostText,\n        jitterSeconds: jitterSeconds,\n        userId: config.threadsUserId,\n        accessToken: config.threadsAccessToken\n      }\n    });\n    \n    // Rate pacing: Limit to max 2 replies per batch run to avoid burst spam flags\n    if (results.length >= 2) break;\n  }\n  if (results.length >= 2) break;\n}\n\nreturn results;"
       },
       "id": "kb-reply-0005",
       "name": "Filter New Comments (Anti-Spam Paced)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1180, 300]
+      "position": [
+        1180,
+        300
+      ]
     },
     {
       "parameters": {
@@ -131,7 +149,10 @@
       "name": "Natural Human Jitter",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [1400, 300]
+      "position": [
+        1400,
+        300
+      ]
     },
     {
       "parameters": {
@@ -148,13 +169,73 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda adalah Ahmad Kamil / KebunData (Gabungan Agronomist Pakar + Sahabat Kebun Mesra) di Meta Threads.\\n\\nPost Asal: {{$json.parentPostText}}\\nKomen Daripada @{{$json.username}}: {{$json.commentText}}\\n\\nSyarat Balasan (Human Voice & Anti-Bot):\\n1. NADA: Santai, jujur, mesra macam kawan borak di kebun (Bahasa Melayu santai / Manglish biasa).\\n2. DILARANG SAMA SEKALI guna gaya robotik/formal seperti 'Hai pengguna', 'Sebagai AI', atau templat berulang. Terus masuk respon bersahaja.\\n3. ILMU: Berikan 1 tip agronomi ringkas & logik yang selesaikan keraguan (1-2 ayat).\\n4. CONVERSATION EXTENDER (WAJIB): Di hujung ayat, tanya SATU soalan susulan yang mesra (cth: jenis media tanam, waktu siraman, atau jenis benih) supaya dia rasa teruja nak balas balik.\\n5. PANJANG: 2-3 ayat sahaja.\\n\\nOutputkan teks balasan sahaja tanpa tanda petik.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.85,\n    \"maxOutputTokens\": 300\n  }\n}"
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda adalah KebunData / Robot People (Gabungan Agronomist Pakar + Sahabat Kebun Mesra) di Meta Threads.\\n\\nPost Asal: {{$json.parentPostText}}\\nKomen Daripada @{{$json.username}}: {{$json.commentText}}\\n\\nSyarat Balasan (Human Voice & Anti-Bot Shield):\\n1. NADA: Santai, jujur, mesra macam kawan borak di kebun (Bahasa Melayu santai / Manglish biasa).\\n2. DILARANG SAMA SEKALI guna gaya robotik/formal seperti 'Hai pengguna', 'Sebagai AI', atau templat berulang. Terus masuk respon bersahaja.\\n3. ILMU: Berikan 1 tip agronomi ringkas & logik yang selesaikan keraguan (1-2 ayat).\\n4. CONVERSATION EXTENDER (WAJIB): Di hujung ayat, tanya SATU soalan susulan yang mesra (cth: jenis media tanam, waktu siraman, atau jenis benih) supaya dia rasa teruja nak balas balik.\\n5. KESELAMATAN POLISI META (ANTI-BAN SHIELD): DILARANG meletakkan link jualan/external URL, tiada unsur makian/toksik, tiada klaim racun berbahaya, tiada ajakan paksa follow/DM.\\n6. PANJANG: 2-3 ayat sahaja.\\n\\nOutputkan teks balasan sahaja tanpa tanda petik.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.85,\n    \"maxOutputTokens\": 300\n  }\n}"
       },
       "id": "kb-reply-0006",
       "name": "Generate Reply (Gemini Natural Voice)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1620, 300]
+      "position": [
+        1620,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $('Setup Credentials & Config').item.json.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah Pengaudit Keselamatan & Data Polisi Meta (Meta Community Standards & Anti-Spam Auditor).\\n\\nSila audit teks balasan Threads berikut sebelum ia diterbitkan:\\n\\\"{{ $json.candidates[0].content.parts[0].text.trim() }}\\\"\\n\\nSyarat Polisi Meta (Anti-Ban Shield):\\n1. TIADA URL / LINK: Dilarang sama sekali sebarang pautan luaran, domain, atau link jualan.\\n2. TIADA SPAM / HARD SELL: Tiada promosi jualan agresif, tiada ajakan paksa 'follow' atau 'DM'.\\n3. TIADA BAHASA TOKSIK: Tiada Hate Speech, Toksik, Makian, Buli, atau Unsur Diskriminasi.\\n4. TIADA RACUN HARAM: Tiada racun kimia berbahaya/diharamkan atau klaim mengelirukan.\\n5. NADA MANUSIA TULEN: Komen bersahaja, mesra, dan nampak 100% tulisan manusia tulen (bukan bot).\\n\\nJika 100% LAYAK & SELAMAT, balas dengan SATU perkataan sahaja: PASS\\nJika ada sebarang pelanggaran atau risiko di-ban, balas dengan SATU perkataan sahaja: FAIL\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.1,\n    \"maxOutputTokens\": 10\n  }\n}"
+      },
+      "id": "kb-reply-0006-audit",
+      "name": "Audit Meta Policy (Gemini Safety Check)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1840,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-policy-reply",
+              "leftValue": "={{ $json.candidates[0].content.parts[0].text.trim() }}",
+              "rightValue": "PASS",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "kb-reply-0006-if",
+      "name": "Is Safe for Meta Policy?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2060,
+        300
+      ]
     },
     {
       "parameters": {
@@ -170,7 +251,7 @@
             },
             {
               "name": "text",
-              "value": "={{$json.candidates[0].content.parts[0].text.trim()}}"
+              "value": "={{ $('Generate Reply (Gemini Natural Voice)').item.json.candidates[0].content.parts[0].text.trim() }}"
             },
             {
               "name": "reply_to_id",
@@ -187,7 +268,10 @@
       "name": "Create Reply Container",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1840, 300]
+      "position": [
+        2280,
+        300
+      ]
     },
     {
       "parameters": {
@@ -198,7 +282,10 @@
       "name": "Wait 4s for Ingestion",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [2060, 300]
+      "position": [
+        2500,
+        300
+      ]
     },
     {
       "parameters": {
@@ -223,7 +310,10 @@
       "name": "Publish Reply to Threads",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2280, 300]
+      "position": [
+        2720,
+        300
+      ]
     }
   ],
   "connections": {
@@ -308,11 +398,34 @@
       "main": [
         [
           {
-            "node": "Create Reply Container",
+            "node": "Audit Meta Policy (Gemini Safety Check)",
             "type": "main",
             "index": 0
           }
         ]
+      ]
+    },
+    "Audit Meta Policy (Gemini Safety Check)": {
+      "main": [
+        [
+          {
+            "node": "Is Safe for Meta Policy?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Safe for Meta Policy?": {
+      "main": [
+        [
+          {
+            "node": "Create Reply Container",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     },
     "Create Reply Container": {

@@ -1,0 +1,344 @@
+{
+  "name": "KebunData Threads - AI Content Factory & Instant Publisher",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "threads-content-factory",
+        "options": {}
+      },
+      "id": "kb-factory-0001",
+      "name": "Instant Webhook / API Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-1",
+              "name": "threadsAccessToken",
+              "value": "={{ $vars.THREADS_ACCESS_TOKEN || \"THAAVDvpmcxZCJBYmJ2MVdLUzNjV2pYTlBzVTY4UGNfanhwRjdwbkRpUEl0bVQ4T1RmR19rYjRsdlBmdTMwWERlbTl5eFhvbmZAVNHBTenhWZAXBuVi1HMzI5Q2tPYlF5bjlBcnkzRjJHaGVFZAlcyMlpfSnR0WUNqdFg1ZAi1iN0VQcDg3ZAwZDZD\" }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-2",
+              "name": "threadsUserId",
+              "value": "={{ $vars.THREADS_USER_ID || \"28448492461400993\" }}",
+              "type": "string"
+            },
+            {
+              "id": "cfg-3",
+              "name": "geminiApiKey",
+              "value": "={{ $vars.GEMINI_API_KEY || \"YOUR_GEMINI_API_KEY_HERE\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "kb-factory-0000",
+      "name": "Setup Credentials & Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst customTopic = body.topic || 'Petua penjagaan pokok cili fertigasi di musim hujan';\nconst customContext = body.context || 'Fokus pada kawalan kulat & penyakit akar reput akibat kelembapan berlebihan.';\nconst config = $('Setup Credentials & Config').first().json;\n\nreturn {\n  json: {\n    topic: customTopic,\n    context: customContext,\n    threadsAccessToken: config.threadsAccessToken,\n    threadsUserId: config.threadsUserId,\n    geminiApiKey: config.geminiApiKey\n  }\n};"
+      },
+      "id": "kb-factory-0002",
+      "name": "Parse Topic & Input Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $('Setup Credentials & Config').item.json.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah Ahmad Kamil / KebunData di Meta Threads. Hasilakn 1 hantaran Threads viral & mesra yang nampak 100% tulisan manusia tulen (bukan bot).\\n\\nTopik Utama: {{$json.topic}}\\nKonteks Tambahan: {{$json.context}}\\n\\nPanduan Gaya Content Factory:\\n1. Baris 1-2 (Hook): Mulakan dengan soalan santai atau fakta mengejutkan yang menarik perhatian geng kebun.\\n2. Baris 3-5 (Solusi Praktikal): Berikan 1-2 petua agronomi logik dalam Bahasa Melayu santai / Manglish.\\n3. Baris Akhir (Conversation Extender): Akhiri dengan 1 soalan ramah untuk galakkan perbualan di ruangan komen.\\n4. Tag: Maksimum 1-2 hashtag (#KebunData #KebunBandar).\\n5. KESELAMATAN POLISI META (ANTI-BAN SHIELD): DILARANG meletakkan link jualan/external URL, tiada unsur makian/toksik, tiada nada iklan keras/hard sell.\\n\\nOutputkan teks hantaran sahaja tanpa tanda petik.\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.85,\n    \"maxOutputTokens\": 500\n  }\n}"
+      },
+      "id": "kb-factory-0003",
+      "name": "Generate Content (Gemini Content Factory)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        740,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst postText = response.candidates[0].content.parts[0].text.trim();\nconst config = $('Setup Credentials & Config').first().json;\nreturn {\n  json: {\n    postText: postText,\n    userId: config.threadsUserId,\n    accessToken: config.threadsAccessToken\n  }\n};"
+      },
+      "id": "kb-factory-0004",
+      "name": "Extract Generated Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "={{ $('Setup Credentials & Config').item.json.geminiApiKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"Anda ialah Pengaudit Keselamatan & Data Polisi Meta (Meta Community Standards & Anti-Spam Auditor).\\n\\nSila audit teks post Threads berikut sebelum diterbitkan:\\n\\\"{{ $json.postText }}\\\"\\n\\nSyarat Polisi Meta (Anti-Ban Shield):\\n1. TIADA URL / LINK: Dilarang sama sekali sebarang pautan luaran, domain, atau link jualan.\\n2. TIADA SPAM / HARD SELL: Tiada promosi jualan agresif, tiada ajakan paksa 'follow' atau 'DM'.\\n3. TIADA BAHASA TOKSIK: Tiada Hate Speech, Toksik, Makian, Buli, atau Unsur Diskriminasi.\\n4. TIADA RACUN HARAM: Tiada racun kimia berbahaya/diharamkan atau klaim mengelirukan.\\n5. NADA MANUSIA TULEN: Perbualan nampak 100% tulisan manusia tulen (bukan bot automatik).\\n\\nJika 100% LAYAK & SELAMAT, balas dengan SATU perkataan sahaja: PASS\\nJika ada sebarang pelanggaran atau risiko di-ban, balas dengan SATU perkataan sahaja: FAIL\"\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.1,\n    \"maxOutputTokens\": 10\n  }\n}"
+      },
+      "id": "kb-factory-0005-audit",
+      "name": "Audit Meta Policy (Gemini Safety Check)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1180,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-policy-fac",
+              "leftValue": "={{ $json.candidates[0].content.parts[0].text.trim() }}",
+              "rightValue": "PASS",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "kb-factory-0006-if",
+      "name": "Is Safe for Meta Policy?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.threads.net/v1.0/me/threads",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "media_type",
+              "value": "TEXT"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('Extract Generated Content').item.json.postText }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
+            }
+          ]
+        }
+      },
+      "id": "kb-factory-0007",
+      "name": "Create Threads Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1620,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 4,
+        "unit": "seconds"
+      },
+      "id": "kb-factory-0008",
+      "name": "Wait 4s for Ingestion",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1840,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.threads.net/v1.0/me/threads_publish",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $node[\"Create Threads Container\"].json[\"id\"] }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Setup Credentials & Config').item.json.threadsAccessToken }}"
+            }
+          ]
+        }
+      },
+      "id": "kb-factory-0009",
+      "name": "Publish to Threads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2060,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Instant Webhook / API Trigger": {
+      "main": [
+        [
+          {
+            "node": "Setup Credentials & Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setup Credentials & Config": {
+      "main": [
+        [
+          {
+            "node": "Parse Topic & Input Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Topic & Input Context": {
+      "main": [
+        [
+          {
+            "node": "Generate Content (Gemini Content Factory)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Content (Gemini Content Factory)": {
+      "main": [
+        [
+          {
+            "node": "Extract Generated Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Generated Content": {
+      "main": [
+        [
+          {
+            "node": "Audit Meta Policy (Gemini Safety Check)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Audit Meta Policy (Gemini Safety Check)": {
+      "main": [
+        [
+          {
+            "node": "Is Safe for Meta Policy?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Safe for Meta Policy?": {
+      "main": [
+        [
+          {
+            "node": "Create Threads Container",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Create Threads Container": {
+      "main": [
+        [
+          {
+            "node": "Wait 4s for Ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 4s for Ingestion": {
+      "main": [
+        [
+          {
+            "node": "Publish to Threads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

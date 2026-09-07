@@ -79,10 +79,6 @@ def call_gemini(prompt, system_instruction=None, temperature=0.75):
     if not api_key:
         raise ValueError("GEMINI_API_KEY is not set. Please set it in .env.")
     
-    # Primary model: gemini-flash-latest / gemini-2.5-flash
-    model_name = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-    
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
@@ -90,22 +86,31 @@ def call_gemini(prompt, system_instruction=None, temperature=0.75):
             "maxOutputTokens": 600
         }
     }
-    
     if system_instruction:
         payload["systemInstruction"] = {
             "parts": [{"text": system_instruction}]
         }
     
-    response = requests.post(url, json=payload, verify=False, timeout=30)
+    models_to_try = [
+        os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+        "gemini-2.5-flash",
+        "gemini-1.5-flash",
+        "gemini-flash-latest"
+    ]
     
-    # Fallback to gemini-flash-latest / gemini-2.5-pro if needed
-    if response.status_code != 200:
-        fallback_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
-        response = requests.post(fallback_url, json=payload, verify=False, timeout=30)
-        
-    response.raise_for_status()
-    data = response.json()
-    return data['candidates'][0]['content']['parts'][0]['text']
+    last_err = None
+    for m in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={api_key}"
+        try:
+            res = requests.post(url, json=payload, verify=False, timeout=30)
+            if res.status_code == 200:
+                data = res.json()
+                return data['candidates'][0]['content']['parts'][0]['text']
+            last_err = f"HTTP {res.status_code}: {res.text}"
+        except Exception as e:
+            last_err = str(e)
+            
+    raise RuntimeError(f"Gemini API generation failed across models. Last error: {last_err}")
 
 def load_agent_soul(agent_name="kebundata-threads"):
     script_dir = os.path.dirname(os.path.abspath(__file__))

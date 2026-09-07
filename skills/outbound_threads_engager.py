@@ -134,7 +134,7 @@ def run_outbound_hunter(dry_run=True, max_replies=1, custom_keyword=None):
             continue
         if len(post_text.strip()) < 15:
             continue
-        if "kebundata" in username.lower() or "ak.kamil" in username.lower():
+        if "kebundata" in username.lower() or "robot.people" in username.lower() or "robot_people" in username.lower():
             continue
 
         print(f"\n--- Found Candidate Post by @{username} (ID: {post_id}) ---")

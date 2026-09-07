@@ -171,7 +171,7 @@ class ThreadsClient:
     # ==========================================
     # 4. threads_keyword_search
     # ==========================================
-    def search_keywords(self, query, search_type="threads"):
+    def search_keywords(self, query, search_type="RECENT"):
         """Search and fetch content with a specific keyword on Threads."""
         url = f"{self.base_url}/keyword_search"
         params = {
