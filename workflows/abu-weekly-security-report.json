@@ -1,0 +1,84 @@
+{
+  "name": "Abu — Weekly OCI Security Report",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "abu-weekly-security-report",
+        "responseMode": "onReceived",
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "id": "abu-webhook",
+      "name": "Receive Abu Report",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "abu-weekly-security-report"
+    },
+    {
+      "parameters": {
+        "jsCode": "const report = $input.first().json.body || $input.first().json;\nif (report?.schemaVersion !== 1 || report?.source !== 'abu-oci') throw new Error('Invalid Abu report');\nconst asText = (value, fallback = 'unavailable') => String(value || fallback).slice(0, 500);\nconst gitleaks = report.gitleaks || {};\nconst trivy = report.trivy || {};\nconst severity = gitleaks.findings > 0 || trivy.critical > 0 ? 'HIGH' : trivy.high > 0 ? 'MEDIUM' : 'INFO';\nconst text = [\n  'Abu weekly security report',\n  'Severity: ' + severity,\n  'Host: ' + asText(report.hostname),\n  'Generated: ' + asText(report.generatedAt),\n  'Disk use: ' + asText(report.diskUse),\n  'Open TCP ports: ' + asText(report.openPorts),\n  'Containers: ' + asText(report.containers),\n  'n8n executions: ' + asText(report.n8nExecutions),\n  'Firewall: ' + asText(report.firewall),\n  'Gitleaks: ' + asText(gitleaks.status) + ', findings: ' + Number(gitleaks.findings || 0),\n  'Trivy: ' + asText(trivy.status) + ', critical: ' + Number(trivy.critical || 0) + ', high: ' + Number(trivy.high || 0)\n].join('\\n');\nreturn [{json:{chatId:'YOUR_TELEGRAM_CHAT_ID',text,severity}}];"
+      },
+      "id": "abu-format",
+      "name": "Format Abu Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "abu-telegram",
+      "name": "Send Abu Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Receive Abu Report": {
+      "main": [
+        [
+          {
+            "node": "Format Abu Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Abu Report": {
+      "main": [
+        [
+          {
+            "node": "Send Abu Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
