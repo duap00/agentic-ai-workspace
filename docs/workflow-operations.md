@@ -32,10 +32,10 @@ The publisher must:
 ## Activation checklist
 
 - Confirm all credentials authenticate successfully.
-- Authenticate the Telegram webhook and verify the approved reviewer identity.
+- Authenticate the Telegram webhook with its secret header and verify the approved reviewer identity.
 - Test missing, malformed, rejected and repeated callbacks.
 - Verify a failure from Threads does not report success.
-- Verify database state changes are atomic enough to prevent duplicate publishing.
+- Verify an atomic approval claim prevents duplicate publishing.
 - Obtain explicit approval before enabling production triggers.
 
 ## Deployment status
