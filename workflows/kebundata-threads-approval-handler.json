@@ -1,53 +1,55 @@
 {
   "name": "KebunData Threads - Human Approval & Publisher Webhook v2",
+  "active": false,
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "threads-approval",
-        "responseMode": "onReceived",
         "options": {}
       },
-      "id": "appr-0001",
+      "id": "e15f4079-37e6-45a0-a05e-4c3a930e0298",
       "name": "Telegram Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        100,
-        300
+        -2352,
+        4304
       ],
       "webhookId": "threads-approval"
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || {};\nconst callbackQuery = body.callback_query;\n\nif (!callbackQuery) {\n  return [{ json: { valid: false } }];\n}\n\nconst data = callbackQuery.data || ''; // e.g. 'approve_test_1001' or 'reject_test_1001'\nconst parts = data.split('_');\nconst action = parts[0]; // 'approve' or 'reject'\nconst postId = parts.slice(1).join('_');\n\nconst config = {\n  threadsAccessToken: $vars.THREADS_ACCESS_TOKEN || \"YOUR_THREADS_ACCESS_TOKEN_HERE\",\n  threadsUserId: $vars.THREADS_USER_ID || \"YOUR_THREADS_USER_ID_HERE\",\n  telegramBotToken: $vars.TELEGRAM_BOT_TOKEN || \"YOUR_TELEGRAM_BOT_TOKEN_HERE\",\n  telegramChatId: $vars.TELEGRAM_CHAT_ID || \"YOUR_TELEGRAM_CHAT_ID_HERE\"\n};\n\nreturn [{\n  json: {\n    valid: true,\n    action: action,\n    postId: postId,\n    callbackQueryId: callbackQuery.id,\n    chatId: callbackQuery.message?.chat?.id || config.telegramChatId,\n    messageId: callbackQuery.message?.message_id,\n    config: config\n  }\n}];"
+        "jsCode": "const raw=$input.first().json;\nconst cb=(raw.body || raw).callback_query;\nconst match=/^(approve|reject)_log_([1-9]\\d*)$/.exec(cb?.data || '');\nif (!match || !cb.id || !cb.message?.chat?.id) return [];\nreturn [{json:{valid:true,action:match[1],approvalId:match[2],callbackQueryId:cb.id,chatId:cb.message.chat.id,messageId:cb.message.message_id,config:{threadsUserId:'YOUR_THREADS_USER_ID',telegramChatId:'YOUR_TELEGRAM_CHAT_ID'}}}];"
       },
-      "id": "appr-0002",
+      "id": "25954dc9-6132-4d71-93fc-3664d1bd9067",
       "name": "Parse Telegram Callback Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        300,
-        300
+        -2144,
+        4304
       ]
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=https://api.telegram.org/bot{{ $json.config.telegramBotToken }}/answerCallbackQuery",
-        "sendQuery": false,
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"callback_query_id\": \"{{ $json.callbackQueryId }}\",\n  \"text\": \"{{ $json.action === 'approve' ? '✅ Kelulusan diterima! Memproses balasan Threads...' : '❌ Keputusan ditolak.' }}\",\n  \"show_alert\": false\n}"
+        "resource": "callback",
+        "operation": "answerQuery",
+        "queryId": "={{ $json.callbackQueryId }}",
+        "additionalFields": {
+          "text": "={{ $json.action === 'approve' ? '✅ Kelulusan diterima! Memproses balasan Threads...' : '❌ Keputusan ditolak.' }}",
+          "show_alert": true
+        }
       },
-      "id": "appr-0002-ack",
+      "id": "86514ac8-4766-4865-bc63-1e3e9a3515d5",
       "name": "Answer Telegram Callback",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [
-        500,
-        300
-      ]
+        -1952,
+        4304
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -69,51 +71,47 @@
             }
           ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
-      "id": "appr-0003",
+      "id": "5bf90c27-2b76-434b-b1d2-73e8b4319be0",
       "name": "Is Valid Callback?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        700,
-        300
+        -1744,
+        4304
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=SELECT * FROM threads_outbound_logs WHERE post_id = '{{ $('Parse Telegram Callback Data').first().json.postId }}' ORDER BY id DESC LIMIT 1;",
+        "query": "SELECT * FROM public.threads_outbound_logs WHERE id = $1;",
         "options": {
-          "alwaysOutputData": true
+          "queryReplacement": "={{ [ $('Parse Telegram Callback Data').first().json.approvalId ] }}"
         }
       },
-      "id": "appr-0004",
+      "id": "d8b65794-6e66-439d-bb9a-393e0550d0d6",
       "name": "Fetch Log from Postgres",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        900,
-        300
+        -1552,
+        4304
       ],
-      "credentials": {
-        "postgres": {
-          "id": "cqm7Rl4AyTXDGIR4",
-          "name": "Postgres account"
-        }
-      }
+      "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "const cb = $('Parse Telegram Callback Data').first().json;\nconst logItem = $input.first()?.json || {};\nconst hasLog = Boolean(logItem.post_id);\n\nconst draftText = hasLog ? logItem.draft_reply : 'Daun kuning selalunya tanda lebihan air atau kurang nitrogen. Boleh cuba kurangkan siraman dan tambah sikit baja N.';\nconst username = hasLog ? logItem.username : 'petani_moden_test';\nconst postId = hasLog ? logItem.post_id : cb.postId;\n\nreturn [{\n  json: {\n    ...cb,\n    post_id: postId,\n    username: username,\n    draft_reply: draftText,\n    matched_topic: logItem.matched_topic || 'kebun',\n    hasLog: hasLog\n  }\n}];"
+        "jsCode": "const cb=$('Parse Telegram Callback Data').first().json;\nconst row=$input.first()?.json || {};\nif (!row.id || String(row.id)!==String(cb.approvalId) || !/^\\d+$/.test(String(row.post_id || '')) || typeof row.draft_reply!=='string' || !row.draft_reply.trim()) throw new Error('Missing or incomplete stored approval');\nif (row.approval_status!=='PENDING_HUMAN_APPROVAL' || row.publish_status!=='UNPUBLISHED') throw new Error('Approval is not pending');\nreturn [{json:{...cb,approvalId:row.id,post_id:row.post_id,username:row.username,draft_reply:row.draft_reply,matched_topic:row.matched_topic}}];"
       },
-      "id": "appr-0004-merge",
-      "name": "Merge Log & Fallback Data",
+      "id": "401c2bf1-ff48-42ee-b78a-1e3e5c2ec25d",
+      "name": "Validate Stored Approval",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1100,
-        300
+        -1344,
+        4304
       ]
     },
     {
@@ -136,157 +134,177 @@
             }
           ],
           "combinator": "and"
-        }
+        },
+        "options": {}
       },
-      "id": "appr-0005",
+      "id": "dc5ecaa8-93f1-48e3-9b0b-e10a3bdf2d0a",
       "name": "Is Approved?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        1300,
-        300
+        -1152,
+        4304
       ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "=https://graph.threads.net/v1.0/{{ $json.config.threadsUserId }}/threads",
-        "sendQuery": false,
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"media_type\": \"TEXT\",\n  \"text\": \"{{ $json.draft_reply }}\",\n  \"reply_to_id\": \"{{ $json.post_id }}\",\n  \"access_token\": \"{{ $json.config.threadsAccessToken }}\"\n}"
+        "jsonBody": "={{ {media_type:\"TEXT\",text:$json.draft_reply,reply_to_id:$json.post_id} }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth"
       },
-      "id": "appr-0006",
+      "id": "344f482c-fd1d-4584-accf-171815266950",
       "name": "Create Threads Reply Container",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1500,
-        200
+        -944,
+        4192
       ]
     },
     {
       "parameters": {
-        "amount": 4,
-        "unit": "seconds"
+        "amount": 4
       },
-      "id": "appr-0007",
+      "id": "b15212b1-c3e8-447e-b8fd-365fb6b7af8d",
       "name": "Wait 4s Ingestion",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        1700,
-        200
-      ]
+        -752,
+        4192
+      ],
+      "webhookId": "5fbb3ead-38c8-4973-87b2-f8bd5ff9188c"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://graph.threads.net/v1.0/{{ $json.config.threadsUserId }}/threads_publish",
+        "url": "=https://graph.threads.net/v1.0/{{ $('Validate Stored Approval').first().json.config.threadsUserId }}/threads_publish",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
             {
               "name": "creation_id",
               "value": "={{ $json.id }}"
-            },
-            {
-              "name": "access_token",
-              "value": "={{ $('Merge Log & Fallback Data').first().json.config.threadsAccessToken }}"
             }
           ]
-        }
+        },
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth"
       },
-      "id": "appr-0008",
+      "id": "80efcf8b-9eb5-4797-b1ef-63c4b2b3334f",
       "name": "Publish to Threads",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1900,
-        200
+        -544,
+        4192
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=UPDATE threads_outbound_logs SET approval_status = 'APPROVED_BY_HUMAN', publish_status = 'PUBLISHED', threads_reply_id = '{{ $json.id }}' WHERE post_id = '{{ $('Merge Log & Fallback Data').first().json.post_id }}';\n\nINSERT INTO threads_authors (author_id, username, last_engaged_at, engagement_count, last_topic)\nVALUES (\n  '{{ $('Merge Log & Fallback Data').first().json.username }}',\n  '{{ $('Merge Log & Fallback Data').first().json.username }}',\n  CURRENT_TIMESTAMP,\n  1,\n  '{{ $('Merge Log & Fallback Data').first().json.matched_topic }}'\n)\nON CONFLICT (author_id) DO UPDATE SET\n  last_engaged_at = CURRENT_TIMESTAMP,\n  engagement_count = threads_authors.engagement_count + 1,\n  last_topic = EXCLUDED.last_topic;",
+        "query": "WITH updated AS (UPDATE public.threads_outbound_logs SET approval_status='APPROVED_BY_HUMAN',publish_status='PUBLISHED',threads_reply_id=$1 WHERE id=$2 AND approval_status='PENDING_HUMAN_APPROVAL' AND publish_status='UNPUBLISHED' RETURNING id,author_id,username,matched_topic), author_update AS (INSERT INTO public.threads_authors (author_id,username,last_engaged_at,engagement_count,last_topic) SELECT COALESCE(author_id,username),username,CURRENT_TIMESTAMP,1,matched_topic FROM updated WHERE username IS NOT NULL ON CONFLICT (author_id) DO UPDATE SET last_engaged_at=CURRENT_TIMESTAMP,engagement_count=threads_authors.engagement_count+1,last_topic=EXCLUDED.last_topic RETURNING author_id) SELECT id FROM updated;",
         "options": {
-          "alwaysOutputData": true
+          "queryReplacement": "={{ [ $json.id, $('Validate Stored Approval').first().json.approvalId ] }}"
         }
       },
-      "id": "appr-0009",
+      "id": "44e11b6d-1534-4a6b-92f8-7789eee93d8f",
       "name": "Update Postgres Approved",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        2100,
-        200
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "cqm7Rl4AyTXDGIR4",
-          "name": "Postgres account"
-        }
-      }
+        -352,
+        4192
+      ]
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=https://api.telegram.org/bot{{ $('Merge Log & Fallback Data').first().json.config.telegramBotToken }}/sendMessage",
-        "sendQuery": false,
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"chat_id\": \"{{ $('Merge Log & Fallback Data').first().json.chatId }}\",\n  \"text\": \"✅ <b>Berjaya Dipublish!</b>\\nKomen balasan telah dipublish ke Meta Threads untuk @{{ $('Merge Log & Fallback Data').first().json.username }}.\\nThreads Reply ID: {{ $('Publish to Threads').first()?.json?.id || 'TEST_PUBLISHED' }}\",\n  \"parse_mode\": \"HTML\"\n}"
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Validate Stored Approval').first().json.chatId }}",
+        "text": "=✅ <b>Berjaya Dipublish!</b>\nKomen balasan telah dipublish ke Meta Threads untuk @{{ $('Validate Stored Approval').first().json.username }}.\nThreads Reply ID: {{ $('Publish to Threads').first()?.json?.id }}",
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "appendAttribution": false
+        }
       },
-      "id": "appr-0010",
+      "id": "40bfce60-a40d-4761-93c5-2e7b2746a866",
       "name": "Notify Telegram Success",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [
-        2300,
-        200
+        -144,
+        4192
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=UPDATE threads_outbound_logs SET approval_status = 'REJECTED_BY_HUMAN', publish_status = 'REJECTED' WHERE post_id = '{{ $('Merge Log & Fallback Data').first().json.post_id }}';",
+        "query": "UPDATE public.threads_outbound_logs SET approval_status='REJECTED_BY_HUMAN',publish_status='REJECTED' WHERE id=$1 AND approval_status='PENDING_HUMAN_APPROVAL' AND publish_status='UNPUBLISHED' RETURNING id;",
         "options": {
-          "alwaysOutputData": true
+          "queryReplacement": "={{ [ $('Validate Stored Approval').first().json.approvalId ] }}"
         }
       },
-      "id": "appr-0011",
+      "id": "3c283caa-dc45-4861-b09d-ca649261aa46",
       "name": "Update Postgres Rejected",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        1500,
-        450
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "cqm7Rl4AyTXDGIR4",
-          "name": "Postgres account"
-        }
-      }
+        -944,
+        4448
+      ]
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=https://api.telegram.org/bot{{ $('Merge Log & Fallback Data').first().json.config.telegramBotToken }}/sendMessage",
-        "sendQuery": false,
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"chat_id\": \"{{ $('Merge Log & Fallback Data').first().json.chatId }}\",\n  \"text\": \"❌ <b>Draf Ditolak.</b>\\nBalasan outbound untuk @{{ $('Merge Log & Fallback Data').first().json.username }} telah ditolak dan direkodkan ke Postgres.\",\n  \"parse_mode\": \"HTML\"\n}"
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Validate Stored Approval').first().json.chatId }}",
+        "text": "=❌ <b>Draf Ditolak.</b>\nBalasan outbound untuk @{{ $('Validate Stored Approval').first().json.username }} telah ditolak dan direkodkan ke Postgres.",
+        "additionalFields": {
+          "parse_mode": "HTML",
+          "appendAttribution": false
+        }
       },
-      "id": "appr-0012",
+      "id": "0573194c-e01f-448c-838b-3f3060f094bb",
       "name": "Notify Telegram Rejection",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [
-        1700,
-        450
+        -752,
+        4448
       ]
+    },
+    {
+      "id": "959e48e2-e814-42fa-a970-3e7fcef0df69",
+      "name": "Validate Container ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -850,
+        4100
+      ],
+      "parameters": {
+        "jsCode": "const d=$input.first().json;if(!/^\\d+$/.test(String(d.id || '')))throw new Error('Missing container ID');return [{json:d}];"
+      }
+    },
+    {
+      "id": "7f421ef1-7025-4728-b703-6c69626f9b4c",
+      "name": "Validate Published ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -450,
+        4100
+      ],
+      "parameters": {
+        "jsCode": "const d=$input.first().json;if(!/^\\d+$/.test(String(d.id || '')))throw new Error('Missing published reply ID');return [{json:d}];"
+      }
     }
   ],
   "connections": {
@@ -331,22 +349,21 @@
             "type": "main",
             "index": 0
           }
-        ],
-        []
+        ]
       ]
     },
     "Fetch Log from Postgres": {
       "main": [
         [
           {
-            "node": "Merge Log & Fallback Data",
+            "node": "Validate Stored Approval",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Merge Log & Fallback Data": {
+    "Validate Stored Approval": {
       "main": [
         [
           {
@@ -379,7 +396,7 @@
       "main": [
         [
           {
-            "node": "Wait 4s Ingestion",
+            "node": "Validate Container ID",
             "type": "main",
             "index": 0
           }
@@ -401,7 +418,7 @@
       "main": [
         [
           {
-            "node": "Update Postgres Approved",
+            "node": "Validate Published ID",
             "type": "main",
             "index": 0
           }
@@ -429,10 +446,37 @@
           }
         ]
       ]
+    },
+    "Validate Container ID": {
+      "main": [
+        [
+          {
+            "node": "Wait 4s Ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Published ID": {
+      "main": [
+        [
+          {
+            "node": "Update Postgres Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
   "settings": {
-    "executionOrder": "v1"
-  }
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "id": "q8Auj2Lj2O4azKQv",
+  "description": null
 }

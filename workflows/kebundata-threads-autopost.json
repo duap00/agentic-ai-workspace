@@ -28,7 +28,7 @@
             {
               "id": "cfg-1",
               "name": "threadsAccessToken",
-              "value": "={{ $vars.THREADS_ACCESS_TOKEN || \"THAAVDvpmcxZCJBYmJ2MVdLUzNjV2pYTlBzVTY4UGNfanhwRjdwbkRpUEl0bVQ4T1RmR19rYjRsdlBmdTMwWERlbTl5eFhvbmZAVNHBTenhWZAXBuVi1HMzI5Q2tPYlF5bjlBcnkzRjJHaGVFZAlcyMlpfSnR0WUNqdFg1ZAi1iN0VQcDg3ZAwZDZD\" }}",
+              "value": "={{ $vars.THREADS_ACCESS_TOKEN || \"YOUR_THREADS_ACCESS_TOKEN\" }}",
               "type": "string"
             },
             {

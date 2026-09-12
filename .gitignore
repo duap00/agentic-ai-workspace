@@ -22,3 +22,6 @@ private/
 *.pem
 *.key
 *.ppk
+
+# Local agent work and generated workflow exports
+scratch/
