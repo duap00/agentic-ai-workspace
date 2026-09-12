@@ -8,7 +8,7 @@ Type=oneshot
 User=ubuntu
 Group=ubuntu
 Environment=ABU_CONFIG_FILE=/home/ubuntu/.config/abu-security/report.env
-ExecStart=/home/ubuntu/agentic-ai-workspace/agents/abu/scripts/collect_security_report.sh
+ExecStart=/usr/local/lib/abu-security/collect_security_report.sh
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=read-only
