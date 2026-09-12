@@ -48,6 +48,10 @@ Odoo is the intended system of record for CRM and commercial operations. The cur
 
 Read [workflow operations](docs/workflow-operations.md) before importing or activating a workflow.
 
+## Security operations
+
+[Abu](agents/abu/SOUL.md) is the local security advisor and operations guardian. Abu reviews evidence from approved tools across GitHub, n8n, OCI and public services, then prepares remediation plans for human approval. Read [Abu security operations](docs/security-operations.md) for the operating model and guardrails.
+
 ## Security and publishing policy
 
 - Never commit secrets, tokens, keys, database passwords or credential exports.

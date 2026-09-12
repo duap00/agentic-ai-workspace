@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS threads_outbound_logs (
     reply_type VARCHAR(100),
     draft_reply TEXT,
     approval_status VARCHAR(50) DEFAULT 'PENDING',
+    approved_by_telegram_user_id BIGINT,
+    approval_claimed_at TIMESTAMPTZ,
     approved_reply TEXT,
     publish_status VARCHAR(50) DEFAULT 'UNPUBLISHED',
     threads_reply_id VARCHAR(255),
@@ -59,6 +61,8 @@ ALTER TABLE threads_outbound_logs ADD COLUMN IF NOT EXISTS final_score INT DEFAU
 ALTER TABLE threads_outbound_logs ADD COLUMN IF NOT EXISTS reply_type VARCHAR(100);
 ALTER TABLE threads_outbound_logs ADD COLUMN IF NOT EXISTS draft_reply TEXT;
 ALTER TABLE threads_outbound_logs ADD COLUMN IF NOT EXISTS approval_status VARCHAR(50) DEFAULT 'PENDING';
+ALTER TABLE threads_outbound_logs ADD COLUMN IF NOT EXISTS approved_by_telegram_user_id BIGINT;
+ALTER TABLE threads_outbound_logs ADD COLUMN IF NOT EXISTS approval_claimed_at TIMESTAMPTZ;
 ALTER TABLE threads_outbound_logs ADD COLUMN IF NOT EXISTS approved_reply TEXT;
 ALTER TABLE threads_outbound_logs ADD COLUMN IF NOT EXISTS publish_status VARCHAR(50) DEFAULT 'UNPUBLISHED';
 ALTER TABLE threads_outbound_logs ADD COLUMN IF NOT EXISTS threads_reply_id VARCHAR(255);
