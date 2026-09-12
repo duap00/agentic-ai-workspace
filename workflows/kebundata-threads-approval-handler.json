@@ -6,7 +6,8 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "threads-approval",
-        "options": {}
+        "options": {},
+        "authentication": "headerAuth"
       },
       "id": "e15f4079-37e6-45a0-a05e-4c3a930e0298",
       "name": "Telegram Webhook",
@@ -20,7 +21,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw=$input.first().json;\nconst cb=(raw.body || raw).callback_query;\nconst match=/^(approve|reject)_log_([1-9]\\d*)$/.exec(cb?.data || '');\nif (!match || !cb.id || !cb.message?.chat?.id) return [];\nreturn [{json:{valid:true,action:match[1],approvalId:match[2],callbackQueryId:cb.id,chatId:cb.message.chat.id,messageId:cb.message.message_id,config:{threadsUserId:'YOUR_THREADS_USER_ID',telegramChatId:'YOUR_TELEGRAM_CHAT_ID'}}}];"
+        "jsCode": "const raw=$input.first().json;\nconst cb=(raw.body || raw).callback_query;\nconst match=/^(approve|reject)_log_([1-9]\\d*)$/.exec(cb?.data || '');\nconst expectedReviewerId='YOUR_TELEGRAM_REVIEWER_ID';\nconst expectedChatId='YOUR_TELEGRAM_CHAT_ID';\nconst reviewerId=String(cb?.from?.id || '');\nconst chatId=String(cb?.message?.chat?.id || '');\nif (!match || !cb?.id || reviewerId!==expectedReviewerId || chatId!==expectedChatId) return [];\nreturn [{json:{valid:true,action:match[1],approvalId:match[2],reviewerId,chatId,callbackQueryId:cb.id,messageId:cb.message.message_id,config:{threadsUserId:'YOUR_THREADS_USER_ID',telegramChatId:expectedChatId}}}];"
       },
       "id": "25954dc9-6132-4d71-93fc-3664d1bd9067",
       "name": "Parse Telegram Callback Data",
@@ -86,13 +87,13 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM public.threads_outbound_logs WHERE id = $1;",
+        "query": "UPDATE public.threads_outbound_logs\nSET approval_status=CASE WHEN $1='approve' THEN 'APPROVAL_CLAIMED' ELSE 'REJECTED_BY_HUMAN' END,\npublish_status=CASE WHEN $1='approve' THEN 'PUBLISHING' ELSE 'REJECTED' END,\napproved_by_telegram_user_id=$2, approval_claimed_at=CURRENT_TIMESTAMP\nWHERE id=$3 AND approval_status='PENDING_HUMAN_APPROVAL' AND publish_status='UNPUBLISHED'\nRETURNING *;",
         "options": {
-          "queryReplacement": "={{ [ $('Parse Telegram Callback Data').first().json.approvalId ] }}"
+          "queryReplacement": "={{ [ $('Parse Telegram Callback Data').first().json.action, $('Parse Telegram Callback Data').first().json.reviewerId, $('Parse Telegram Callback Data').first().json.approvalId ] }}"
         }
       },
       "id": "d8b65794-6e66-439d-bb9a-393e0550d0d6",
-      "name": "Fetch Log from Postgres",
+      "name": "Claim Pending Approval",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
@@ -103,7 +104,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const cb=$('Parse Telegram Callback Data').first().json;\nconst row=$input.first()?.json || {};\nif (!row.id || String(row.id)!==String(cb.approvalId) || !/^\\d+$/.test(String(row.post_id || '')) || typeof row.draft_reply!=='string' || !row.draft_reply.trim()) throw new Error('Missing or incomplete stored approval');\nif (row.approval_status!=='PENDING_HUMAN_APPROVAL' || row.publish_status!=='UNPUBLISHED') throw new Error('Approval is not pending');\nreturn [{json:{...cb,approvalId:row.id,post_id:row.post_id,username:row.username,draft_reply:row.draft_reply,matched_topic:row.matched_topic}}];"
+        "jsCode": "const cb=$('Parse Telegram Callback Data').first().json;\nconst row=$input.first()?.json || {};\nif (!row.id || String(row.id)!==String(cb.approvalId) || !/^\\d+$/.test(String(row.post_id || '')) || typeof row.draft_reply!=='string' || !row.draft_reply.trim()) throw new Error('Missing or incomplete stored approval');\nconst approved=cb.action==='approve' && row.approval_status==='APPROVAL_CLAIMED' && row.publish_status==='PUBLISHING';\nconst rejected=cb.action==='reject' && row.approval_status==='REJECTED_BY_HUMAN' && row.publish_status==='REJECTED';\nif (!approved && !rejected) throw new Error('Approval has already been used or is not pending');\nreturn [{json:{...cb,approvalId:row.id,post_id:row.post_id,username:row.username,draft_reply:row.draft_reply,matched_topic:row.matched_topic}}];"
       },
       "id": "401c2bf1-ff48-42ee-b78a-1e3e5c2ec25d",
       "name": "Validate Stored Approval",
@@ -209,7 +210,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH updated AS (UPDATE public.threads_outbound_logs SET approval_status='APPROVED_BY_HUMAN',publish_status='PUBLISHED',threads_reply_id=$1 WHERE id=$2 AND approval_status='PENDING_HUMAN_APPROVAL' AND publish_status='UNPUBLISHED' RETURNING id,author_id,username,matched_topic), author_update AS (INSERT INTO public.threads_authors (author_id,username,last_engaged_at,engagement_count,last_topic) SELECT COALESCE(author_id,username),username,CURRENT_TIMESTAMP,1,matched_topic FROM updated WHERE username IS NOT NULL ON CONFLICT (author_id) DO UPDATE SET last_engaged_at=CURRENT_TIMESTAMP,engagement_count=threads_authors.engagement_count+1,last_topic=EXCLUDED.last_topic RETURNING author_id) SELECT id FROM updated;",
+        "query": "WITH updated AS (\nUPDATE public.threads_outbound_logs SET approval_status='APPROVED_BY_HUMAN',publish_status='PUBLISHED',threads_reply_id=$1\nWHERE id=$2 AND approval_status='APPROVAL_CLAIMED' AND publish_status='PUBLISHING'\nRETURNING id,author_id,username,matched_topic\n), author_update AS (\nINSERT INTO public.threads_authors (author_id,username,last_engaged_at,engagement_count,last_topic)\nSELECT COALESCE(author_id,username),username,CURRENT_TIMESTAMP,1,matched_topic FROM updated WHERE username IS NOT NULL\nON CONFLICT (author_id) DO UPDATE SET last_engaged_at=CURRENT_TIMESTAMP,engagement_count=threads_authors.engagement_count+1,last_topic=EXCLUDED.last_topic\nRETURNING author_id\n) SELECT id FROM updated;",
         "options": {
           "queryReplacement": "={{ [ $json.id, $('Validate Stored Approval').first().json.approvalId ] }}"
         }
@@ -241,23 +242,6 @@
       "position": [
         -144,
         4192
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "UPDATE public.threads_outbound_logs SET approval_status='REJECTED_BY_HUMAN',publish_status='REJECTED' WHERE id=$1 AND approval_status='PENDING_HUMAN_APPROVAL' AND publish_status='UNPUBLISHED' RETURNING id;",
-        "options": {
-          "queryReplacement": "={{ [ $('Validate Stored Approval').first().json.approvalId ] }}"
-        }
-      },
-      "id": "3c283caa-dc45-4861-b09d-ca649261aa46",
-      "name": "Update Postgres Rejected",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.4,
-      "position": [
-        -944,
-        4448
       ]
     },
     {
@@ -323,7 +307,7 @@
       "main": [
         [
           {
-            "node": "Answer Telegram Callback",
+            "node": "Is Valid Callback?",
             "type": "main",
             "index": 0
           }
@@ -334,7 +318,7 @@
       "main": [
         [
           {
-            "node": "Is Valid Callback?",
+            "node": "Is Approved?",
             "type": "main",
             "index": 0
           }
@@ -345,18 +329,7 @@
       "main": [
         [
           {
-            "node": "Fetch Log from Postgres",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch Log from Postgres": {
-      "main": [
-        [
-          {
-            "node": "Validate Stored Approval",
+            "node": "Claim Pending Approval",
             "type": "main",
             "index": 0
           }
@@ -367,7 +340,7 @@
       "main": [
         [
           {
-            "node": "Is Approved?",
+            "node": "Answer Telegram Callback",
             "type": "main",
             "index": 0
           }
@@ -385,7 +358,7 @@
         ],
         [
           {
-            "node": "Update Postgres Rejected",
+            "node": "Notify Telegram Rejection",
             "type": "main",
             "index": 0
           }
@@ -436,17 +409,6 @@
         ]
       ]
     },
-    "Update Postgres Rejected": {
-      "main": [
-        [
-          {
-            "node": "Notify Telegram Rejection",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Validate Container ID": {
       "main": [
         [
@@ -468,8 +430,21 @@
           }
         ]
       ]
+    },
+    "Claim Pending Approval": {
+      "main": [
+        [
+          {
+            "node": "Validate Stored Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
+  "createdAt": "2026-09-05T15:27:09.707+00:00",
+  "updatedAt": "2026-09-11T15:12:45.465+00:00",
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
@@ -477,6 +452,17 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
+  "staticData": null,
+  "pinData": {},
+  "versionId": "21134bb1-8109-4921-b1a7-8d75cd851e24",
+  "triggerCount": 1,
   "id": "q8Auj2Lj2O4azKQv",
-  "description": null
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "parentFolderId": null,
+  "isArchived": false,
+  "versionCounter": 60,
+  "description": null,
+  "activeVersionId": null
 }
