@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Abu security report weekly
+
+[Timer]
+OnCalendar=Mon *-*-* 01:00:00 UTC
+Persistent=true
+RandomizedDelaySec=15m
+Unit=abu-security-report.service
+
+[Install]
+WantedBy=timers.target

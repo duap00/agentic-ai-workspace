@@ -40,3 +40,30 @@ The first report should cover:
 - OCI open ports, disk capacity and pending updates
 - Container image vulnerabilities
 - Backup freshness and last successful restore test
+
+## Weekly OCI collector
+
+The versioned collector at `agents/abu/scripts/collect_security_report.sh` runs on OCI as the `ubuntu` user. It uses read-only checks, sends a sanitized JSON summary to n8n through a header-authenticated webhook, and n8n sends the Telegram report.
+
+Runtime configuration is deliberately outside Git:
+
+```ini
+ABU_REPORT_URL=https://n8n.example.com/webhook/abu-weekly-security-report
+ABU_REPORT_SECRET=generated-secret-stored-outside-version-control
+ABU_REPOSITORY_PATH=/home/ubuntu/agentic-ai-workspace
+ABU_TRIVY_MAX_IMAGES=2
+ABU_TRIVY_CACHE_PATH=/home/ubuntu/.cache/abu-trivy
+```
+
+The collector reports counts and status only. It does not transmit scanner findings, credentials or raw logs.
+It scans at most two active container images per run by default to keep the weekly job suitable for the current OCI capacity.
+
+The systemd templates under `agents/abu/systemd/` schedule the report for Monday at 01:00 UTC with a randomized delay of up to 15 minutes. Installing the files is not enough to activate the timer; a named human operator must explicitly enable it after the n8n webhook credential, Telegram credential, chat ID and host configuration have been verified.
+
+Suggested deployment sequence:
+
+1. Import `workflows/abu-weekly-security-report.json` into n8n and keep it inactive.
+2. Assign an n8n Header Auth credential whose header is `X-Abu-Report-Secret`, assign the Telegram credential, and replace `YOUR_TELEGRAM_CHAT_ID`.
+3. Create `/home/ubuntu/.config/abu-security/report.env` with mode `0600`; never add it to Git.
+4. Install the service and timer templates in `/etc/systemd/system/`, then run one manual service test while the n8n workflow is active and observed.
+5. Only after the test is reviewed, enable `abu-security-report.timer`.
