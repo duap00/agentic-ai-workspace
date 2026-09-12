@@ -445,7 +445,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO public.threads_outbound_logs (execution_id,post_id,author_id,username,original_post,matched_topic,scout_decision,relevance_score,conversation_score,value_score,risk_score,final_score,reply_type,draft_reply,approval_status,publish_status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'PENDING_HUMAN_APPROVAL','UNPUBLISHED') RETURNING *;",
+        "query": "INSERT INTO public.threads_outbound_logs (execution_id,post_id,author_id,username,original_post,matched_topic,scout_decision,relevance_score,conversation_score,value_score,risk_score,final_score,reply_type,draft_reply,approval_status,publish_status,approval_expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'PENDING_HUMAN_APPROVAL','UNPUBLISHED',CURRENT_TIMESTAMP + INTERVAL '24 hours') RETURNING *;",
         "options": {
           "queryReplacement": "={{ [$execution.id,$json.postId,$json.postUsername,$json.postUsername,$json.postText,$json.matchedKeyword,$json.scoutDecision,$json.relevanceScore,$json.conversationScore,$json.valueScore,$json.riskScore,$json.finalScore,$json.replyType,$json.draftReply] }}"
         }
@@ -568,7 +568,7 @@
         9800
       ],
       "parameters": {
-        "jsCode": "const row=$input.first().json;\nconst draft=$('Validate Draft Before Storage').first().json;\nif (!/^\\d+$/.test(String(row.id || '')) || row.post_id !== draft.postId || row.draft_reply !== draft.draftReply) throw new Error('Stored approval does not match draft');\nreturn [{json:{...draft,approvalId:row.id,draftReply:row.draft_reply,postId:row.post_id}}];"
+        "jsCode": "const row=$input.first().json;\nconst draft=$('Validate Draft Before Storage').first().json;\nif (!/^\\d+$/.test(String(row.id || '')) || row.post_id !== draft.postId || row.draft_reply !== draft.draftReply) throw new Error('Stored approval does not match draft');\nif (!row.approval_expires_at || !Number.isFinite(Date.parse(row.approval_expires_at)) || Date.parse(row.approval_expires_at)<=Date.now()) throw new Error('Missing or expired approval deadline');\nreturn [{json:{...draft,approvalId:row.id,draftReply:row.draft_reply,postId:row.post_id}}];"
       }
     }
   ],

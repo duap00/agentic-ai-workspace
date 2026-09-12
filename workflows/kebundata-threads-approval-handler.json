@@ -87,9 +87,9 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE public.threads_outbound_logs\nSET approval_status=CASE WHEN $1='approve' THEN 'APPROVAL_CLAIMED' ELSE 'REJECTED_BY_HUMAN' END,\npublish_status=CASE WHEN $1='approve' THEN 'PUBLISHING' ELSE 'REJECTED' END,\napproved_by_telegram_user_id=$2, approval_claimed_at=CURRENT_TIMESTAMP\nWHERE id=$3 AND approval_status='PENDING_HUMAN_APPROVAL' AND publish_status='UNPUBLISHED'\nRETURNING *;",
+        "query": "UPDATE public.threads_outbound_logs\nSET approval_status=CASE WHEN $1='approve' THEN 'APPROVAL_CLAIMED' ELSE 'REJECTED_BY_HUMAN' END,\npublish_status=CASE WHEN $1='approve' THEN 'PUBLISHING' ELSE 'REJECTED' END,\napproved_by_telegram_user_id=$2, approval_claimed_at=CURRENT_TIMESTAMP,\napproval_execution_id=$4,\napproved_reply=CASE WHEN $1='approve' THEN draft_reply ELSE NULL END\nWHERE id=$3 AND $1 IN ('approve','reject')\nAND approval_status='PENDING_HUMAN_APPROVAL' AND publish_status='UNPUBLISHED'\nAND approval_expires_at > CURRENT_TIMESTAMP\nAND ($1='reject' OR (post_id ~ '^[1-9][0-9]*$' AND draft_reply ~ '[^[:space:]]'))\nRETURNING *;",
         "options": {
-          "queryReplacement": "={{ [ $('Parse Telegram Callback Data').first().json.action, $('Parse Telegram Callback Data').first().json.reviewerId, $('Parse Telegram Callback Data').first().json.approvalId ] }}"
+          "queryReplacement": "={{ [ $('Parse Telegram Callback Data').first().json.action, $('Parse Telegram Callback Data').first().json.reviewerId, $('Parse Telegram Callback Data').first().json.approvalId, $execution.id ] }}"
         }
       },
       "id": "d8b65794-6e66-439d-bb9a-393e0550d0d6",
@@ -104,7 +104,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const cb=$('Parse Telegram Callback Data').first().json;\nconst row=$input.first()?.json || {};\nif (!row.id || String(row.id)!==String(cb.approvalId) || !/^\\d+$/.test(String(row.post_id || '')) || typeof row.draft_reply!=='string' || !row.draft_reply.trim()) throw new Error('Missing or incomplete stored approval');\nconst approved=cb.action==='approve' && row.approval_status==='APPROVAL_CLAIMED' && row.publish_status==='PUBLISHING';\nconst rejected=cb.action==='reject' && row.approval_status==='REJECTED_BY_HUMAN' && row.publish_status==='REJECTED';\nif (!approved && !rejected) throw new Error('Approval has already been used or is not pending');\nreturn [{json:{...cb,approvalId:row.id,post_id:row.post_id,username:row.username,draft_reply:row.draft_reply,matched_topic:row.matched_topic}}];"
+        "jsCode": "const cb=$('Parse Telegram Callback Data').first().json;\nconst row=$input.first()?.json || {};\nif (!row.id || String(row.id)!==String(cb.approvalId)) throw new Error('Approval missing, expired, invalid or already consumed');\nif (String(row.approved_by_telegram_user_id)!==String(cb.reviewerId) || String(row.approval_execution_id)!==String($execution.id)) throw new Error('Approval claim owner mismatch');\nconst expires=Date.parse(row.approval_expires_at), claimed=Date.parse(row.approval_claimed_at);\nif (!Number.isFinite(expires) || !Number.isFinite(claimed) || expires<=claimed) throw new Error('Invalid approval expiry');\nconst approved=cb.action==='approve' && row.approval_status==='APPROVAL_CLAIMED' && row.publish_status==='PUBLISHING';\nconst rejected=cb.action==='reject' && row.approval_status==='REJECTED_BY_HUMAN' && row.publish_status==='REJECTED';\nif (!approved && !rejected) throw new Error('Approval has already been used or is not pending');\nif (approved && (!/^[1-9]\\d*$/.test(String(row.post_id || '')) || typeof row.approved_reply!=='string' || !row.approved_reply.trim())) throw new Error('Missing approved draft or target');\nreturn [{json:{...cb,approvalId:row.id,post_id:row.post_id,username:row.username,draft_reply:row.approved_reply,matched_topic:row.matched_topic}}];"
       },
       "id": "401c2bf1-ff48-42ee-b78a-1e3e5c2ec25d",
       "name": "Validate Stored Approval",
@@ -165,11 +165,14 @@
       "position": [
         -944,
         4192
-      ]
+      ],
+      "onError": "continueErrorOutput",
+      "retryOnFail": false
     },
     {
       "parameters": {
-        "amount": 4
+        "amount": 4,
+        "unit": "seconds"
       },
       "id": "b15212b1-c3e8-447e-b8fd-365fb6b7af8d",
       "name": "Wait 4s Ingestion",
@@ -205,14 +208,16 @@
       "position": [
         -544,
         4192
-      ]
+      ],
+      "onError": "continueErrorOutput",
+      "retryOnFail": false
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH updated AS (\nUPDATE public.threads_outbound_logs SET approval_status='APPROVED_BY_HUMAN',publish_status='PUBLISHED',threads_reply_id=$1\nWHERE id=$2 AND approval_status='APPROVAL_CLAIMED' AND publish_status='PUBLISHING'\nRETURNING id,author_id,username,matched_topic\n), author_update AS (\nINSERT INTO public.threads_authors (author_id,username,last_engaged_at,engagement_count,last_topic)\nSELECT COALESCE(author_id,username),username,CURRENT_TIMESTAMP,1,matched_topic FROM updated WHERE username IS NOT NULL\nON CONFLICT (author_id) DO UPDATE SET last_engaged_at=CURRENT_TIMESTAMP,engagement_count=threads_authors.engagement_count+1,last_topic=EXCLUDED.last_topic\nRETURNING author_id\n) SELECT id FROM updated;",
+        "query": "WITH updated AS (\nUPDATE public.threads_outbound_logs SET approval_status='APPROVED_BY_HUMAN',publish_status='PUBLISHED',threads_reply_id=$1, published_at=CURRENT_TIMESTAMP\nWHERE id=$2 AND approval_execution_id=$3 AND publish_attempted_at IS NOT NULL AND approval_status='APPROVAL_CLAIMED' AND publish_status='PUBLISHING'\nRETURNING id,author_id,username,matched_topic\n), author_update AS (\nINSERT INTO public.threads_authors (author_id,username,last_engaged_at,engagement_count,last_topic)\nSELECT COALESCE(author_id,username),username,CURRENT_TIMESTAMP,1,matched_topic FROM updated WHERE username IS NOT NULL\nON CONFLICT (author_id) DO UPDATE SET last_engaged_at=CURRENT_TIMESTAMP,engagement_count=threads_authors.engagement_count+1,last_topic=EXCLUDED.last_topic\nRETURNING author_id\n) SELECT id FROM updated;",
         "options": {
-          "queryReplacement": "={{ [ $json.id, $('Validate Stored Approval').first().json.approvalId ] }}"
+          "queryReplacement": "={{ [ $json.id, $('Validate Stored Approval').first().json.approvalId, $execution.id ] }}"
         }
       },
       "id": "44e11b6d-1534-4a6b-92f8-7789eee93d8f",
@@ -222,14 +227,16 @@
       "position": [
         -352,
         4192
-      ]
+      ],
+      "onError": "continueErrorOutput",
+      "retryOnFail": false
     },
     {
       "parameters": {
         "resource": "message",
         "operation": "sendMessage",
         "chatId": "={{ $('Validate Stored Approval').first().json.chatId }}",
-        "text": "=✅ <b>Berjaya Dipublish!</b>\nKomen balasan telah dipublish ke Meta Threads untuk @{{ $('Validate Stored Approval').first().json.username }}.\nThreads Reply ID: {{ $('Publish to Threads').first()?.json?.id }}",
+        "text": "=✅ Published. Approval record: {{ $('Validate Stored Approval').first().json.approvalId }}. Threads reply ID: {{ $('Validate Published ID').first().json.id }}",
         "additionalFields": {
           "parse_mode": "HTML",
           "appendAttribution": false
@@ -249,7 +256,7 @@
         "resource": "message",
         "operation": "sendMessage",
         "chatId": "={{ $('Validate Stored Approval').first().json.chatId }}",
-        "text": "=❌ <b>Draf Ditolak.</b>\nBalasan outbound untuk @{{ $('Validate Stored Approval').first().json.username }} telah ditolak dan direkodkan ke Postgres.",
+        "text": "=❌ Rejected. Approval record: {{ $('Validate Stored Approval').first().json.approvalId }}.",
         "additionalFields": {
           "parse_mode": "HTML",
           "appendAttribution": false
@@ -275,7 +282,9 @@
       ],
       "parameters": {
         "jsCode": "const d=$input.first().json;if(!/^\\d+$/.test(String(d.id || '')))throw new Error('Missing container ID');return [{json:d}];"
-      }
+      },
+      "onError": "continueErrorOutput",
+      "retryOnFail": false
     },
     {
       "id": "7f421ef1-7025-4728-b703-6c69626f9b4c",
@@ -288,6 +297,76 @@
       ],
       "parameters": {
         "jsCode": "const d=$input.first().json;if(!/^\\d+$/.test(String(d.id || '')))throw new Error('Missing published reply ID');return [{json:d}];"
+      },
+      "onError": "continueErrorOutput",
+      "retryOnFail": false
+    },
+    {
+      "id": "restore-approval-context",
+      "name": "Restore Approval Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1230,
+        4304
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{...$('Validate Stored Approval').first().json}}];"
+      }
+    },
+    {
+      "name": "Persist Container ID",
+      "id": "persist-container",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -780,
+        4100
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE public.threads_outbound_logs SET threads_container_id=$1\nWHERE id=$2 AND approval_execution_id=$3 AND approval_status='APPROVAL_CLAIMED' AND publish_status='PUBLISHING' AND threads_container_id IS NULL AND publish_attempted_at IS NULL\nRETURNING threads_container_id AS id;",
+        "options": {
+          "queryReplacement": "={{ [ $json.id, $('Validate Stored Approval').first().json.approvalId, $execution.id ] }}"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "retryOnFail": false
+    },
+    {
+      "name": "Record Publish Attempt",
+      "id": "record-publish-attempt",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -600,
+        4100
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE public.threads_outbound_logs SET publish_attempted_at=CURRENT_TIMESTAMP\nWHERE id=$2 AND approval_execution_id=$3 AND approval_status='APPROVAL_CLAIMED' AND publish_status='PUBLISHING' AND threads_container_id=$1 AND publish_attempted_at IS NULL\nRETURNING threads_container_id AS id;",
+        "options": {
+          "queryReplacement": "={{ [ $json.id, $('Validate Stored Approval').first().json.approvalId, $execution.id ] }}"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "retryOnFail": false
+    },
+    {
+      "name": "Record Uncertain Publication",
+      "id": "record-uncertain",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -400,
+        4650
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE public.threads_outbound_logs\nSET publish_status='PUBLISH_UNKNOWN',error_code='MANUAL_RECONCILIATION_REQUIRED',\nerror_message='Publication flow failed; verify external outcome before any retry.'\nWHERE id=$1 AND approval_execution_id=$2 AND approval_status='APPROVAL_CLAIMED' AND publish_status='PUBLISHING'\nRETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ $('Validate Stored Approval').first().json.approvalId, $execution.id ] }}"
+        }
       }
     }
   ],
@@ -318,7 +397,7 @@
       "main": [
         [
           {
-            "node": "Is Approved?",
+            "node": "Restore Approval Context",
             "type": "main",
             "index": 0
           }
@@ -373,6 +452,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Record Uncertain Publication",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -380,7 +466,7 @@
       "main": [
         [
           {
-            "node": "Publish to Threads",
+            "node": "Record Publish Attempt",
             "type": "main",
             "index": 0
           }
@@ -395,6 +481,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Record Uncertain Publication",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -406,6 +499,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Record Uncertain Publication",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -413,7 +513,14 @@
       "main": [
         [
           {
-            "node": "Wait 4s Ingestion",
+            "node": "Persist Container ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Uncertain Publication",
             "type": "main",
             "index": 0
           }
@@ -425,6 +532,13 @@
         [
           {
             "node": "Update Postgres Approved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Uncertain Publication",
             "type": "main",
             "index": 0
           }
@@ -441,10 +555,55 @@
           }
         ]
       ]
+    },
+    "Restore Approval Context": {
+      "main": [
+        [
+          {
+            "node": "Is Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Container ID": {
+      "main": [
+        [
+          {
+            "node": "Wait 4s Ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Uncertain Publication",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Publish Attempt": {
+      "main": [
+        [
+          {
+            "node": "Publish to Threads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Record Uncertain Publication",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "createdAt": "2026-09-05T15:27:09.707+00:00",
-  "updatedAt": "2026-09-11T15:12:45.465+00:00",
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
@@ -453,16 +612,5 @@
     "availableInMCP": false
   },
   "staticData": null,
-  "pinData": {},
-  "versionId": "21134bb1-8109-4921-b1a7-8d75cd851e24",
-  "triggerCount": 1,
-  "id": "q8Auj2Lj2O4azKQv",
-  "meta": {
-    "templateCredsSetupCompleted": true
-  },
-  "parentFolderId": null,
-  "isArchived": false,
-  "versionCounter": 60,
-  "description": null,
-  "activeVersionId": null
+  "pinData": {}
 }
